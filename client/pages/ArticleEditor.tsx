@@ -420,15 +420,54 @@ export default function ArticleEditor() {
               modules={{
                 toolbar: {
                   container: [
-                    [{ header: [1, 2, 3, false] }],
+                    ["paragraph-btn", "h1-btn", "h2-btn", "h3-btn"],
                     ["bold", "italic", "underline", "strike", "blockquote"],
                     [{ list: "ordered" }, { list: "bullet" }],
-                    ["link", "image"],
+                    ["link", "image", "video-btn"],
                     ["ai-rewrite"],
                     ["clean"],
                   ],
                   handlers: {
                     "ai-rewrite": handleOpenRewriteModal,
+                    "paragraph-btn": () => {
+                      if (quillRef.current) {
+                        const editor = quillRef.current.getEditor();
+                        editor.formatLine(editor.getSelection().index, 1, {
+                          header: false,
+                        });
+                      }
+                    },
+                    "h1-btn": () => {
+                      if (quillRef.current) {
+                        const editor = quillRef.current.getEditor();
+                        editor.formatLine(
+                          editor.getSelection().index,
+                          1,
+                          { header: 1 }
+                        );
+                      }
+                    },
+                    "h2-btn": () => {
+                      if (quillRef.current) {
+                        const editor = quillRef.current.getEditor();
+                        editor.formatLine(
+                          editor.getSelection().index,
+                          1,
+                          { header: 2 }
+                        );
+                      }
+                    },
+                    "h3-btn": () => {
+                      if (quillRef.current) {
+                        const editor = quillRef.current.getEditor();
+                        editor.formatLine(
+                          editor.getSelection().index,
+                          1,
+                          { header: 3 }
+                        );
+                      }
+                    },
+                    "video-btn": handleInsertVideo,
                   },
                 },
               }}
