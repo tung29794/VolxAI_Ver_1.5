@@ -18,15 +18,23 @@ import AdminArticles from "@/components/admin/AdminArticles";
 import AdminPayments from "@/components/admin/AdminPayments";
 import AdminPlans from "@/components/admin/AdminPlans";
 import AdminFeatures from "@/components/admin/AdminFeatures";
+import AdminAPIs from "@/components/admin/AdminAPIs";
+import { Settings } from "lucide-react";
 
-type AdminTab = "overview" | "articles" | "payments" | "plans" | "features";
+type AdminTab =
+  | "overview"
+  | "articles"
+  | "payments"
+  | "plans"
+  | "features"
+  | "apis";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user, logoutUser } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(
-    typeof window !== "undefined" && window.innerWidth >= 768
+    typeof window !== "undefined" && window.innerWidth >= 768,
   );
 
   // Check if user is admin
@@ -70,6 +78,12 @@ export default function AdminDashboard() {
       label: "Các gói dịch vụ",
       icon: Package,
       description: "Quản lý gói dịch vụ",
+    },
+    {
+      id: "apis",
+      label: "Quản lý API",
+      icon: Settings,
+      description: "Quản lý API keys",
     },
   ];
 
@@ -166,6 +180,7 @@ export default function AdminDashboard() {
             {activeTab === "payments" && <AdminPayments />}
             {activeTab === "features" && <AdminFeatures />}
             {activeTab === "plans" && <AdminPlans />}
+            {activeTab === "apis" && <AdminAPIs />}
           </div>
         </div>
       </div>

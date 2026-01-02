@@ -22,6 +22,7 @@ import Register from "./pages/Register";
 import Upgrade from "./pages/Upgrade";
 import Account from "./pages/Account";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminArticles from "./pages/AdminArticles";
 import ArticleEditor from "./pages/ArticleEditor";
 import NotFound from "./pages/NotFound";
 
@@ -78,7 +79,23 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/articles"
+              element={
+                <ProtectedRoute>
+                  <AdminArticles />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/articles/new"
+              element={
+                <ProtectedRoute>
+                  <ArticleEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/article/:id"
               element={
                 <ProtectedRoute>
                   <ArticleEditor />

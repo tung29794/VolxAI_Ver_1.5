@@ -213,6 +213,50 @@ INSERT IGNORE INTO subscription_plans (
 ('premium', 'Premium', 'Giải pháp hoàn chỉnh cho doanh nghiệp', 1200000, 12000000, 6500000, 1000, 'Crown', 6, TRUE, JSON_ARRAY());
 
 -- ====================================================================
+-- Create Image Search API Keys Management Table
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS image_search_api_keys (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    provider VARCHAR(50) NOT NULL COMMENT 'serpapi, serper.dev, zenserp',
+    api_key VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    quota_remaining INT DEFAULT 100,
+    quota_reset_date TIMESTAMP NULL,
+    last_used_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_provider (provider),
+    INDEX idx_is_active (is_active),
+    INDEX idx_quota_remaining (quota_remaining)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Manage multiple image search API providers and keys for quota rotation';
+
+-- ====================================================================
+-- Insert Default Image Search API Keys
+-- ====================================================================
+INSERT IGNORE INTO image_search_api_keys (provider, api_key, is_active, quota_remaining) VALUES
+('serpapi', 'b7ecd9a1e490b34dda523bcb44cf6de1f6c7c2caa4b87c64e85857eca0b3fe46', TRUE, 100),
+('serpapi', '90ecd9a1e490b34dda523bcb44cf6de1f6c7c2caa4b87c64e85857eca0b3fe46', TRUE, 100),
+('serper.dev', '369f38890dca6cc3a072553db013737f2994baa6', TRUE, 100),
+('serper.dev', '459f38890dca6cc3a072553db013737f2994baa6', TRUE, 100),
+('zenserp', '695dbee0-e235-11f0-9b40-3f81023abf46', TRUE, 100),
+('zenserp', '27358193-e235-11f0-9b40-3f81023abf46', TRUE, 100);
+
+-- ====================================================================
+-- Create AI Rewrite History Table
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS ai_rewrite_history (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    original_text LONGTEXT NOT NULL,
+    rewritten_text LONGTEXT NOT NULL,
+    style VARCHAR(50) NOT NULL COMMENT 'standard, shorter, longer, easy, creative, funny, casual, friendly, professional',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_style (style),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Log of AI text rewriting requests for analysis and tracking';
+
+-- ====================================================================
 -- Verify tables created
 -- ====================================================================
 -- Run this query to verify all tables were created:
@@ -224,3 +268,4 @@ INSERT IGNORE INTO subscription_plans (
 -- DESCRIBE articles;
 -- DESCRIBE token_usage_history;
 -- DESCRIBE audit_logs;
+-- DESCRIBE ai_rewrite_history;
