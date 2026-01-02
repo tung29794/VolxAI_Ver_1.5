@@ -369,9 +369,15 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
 [h2] heading
 [h3] sub heading
 [h2] heading`}
-                    className="w-full p-3 border border-border rounded-lg text-sm resize-none focus:outline-none focus:border-primary"
+                    className={`w-full p-3 border rounded-lg text-sm resize-none focus:outline-none focus:border-primary ${
+                      errors.customOutline ? "border-destructive" : "border-border"
+                    }`}
                     rows={5}
+                    disabled={isLoading}
                   />
+                  {errors.customOutline && (
+                    <p className="text-sm text-destructive">{errors.customOutline}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Cho phép định dạng dàn ý với format [h2][h3], xem{" "}
                     <span className="text-primary font-semibold cursor-pointer">
