@@ -1184,7 +1184,7 @@ export default function Account() {
             {/* Writing Section - Viết bài */}
             {activeTab === "write" && (
               <div className="space-y-6">
-                {activeWritingFeature === "keyword" && (
+                {!isGenerating && activeWritingFeature === "keyword" && (
                   <button
                     onClick={() => setActiveWritingFeature(null)}
                     className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
@@ -1194,8 +1194,17 @@ export default function Account() {
                   </button>
                 )}
 
-                {activeWritingFeature === "keyword" ? (
-                  <WriteByKeywordForm />
+                {isGenerating && generationFormData ? (
+                  <WritingProgressView
+                    formData={generationFormData}
+                    onCancel={handleGenerationCancel}
+                    onComplete={handleGenerationComplete}
+                  />
+                ) : activeWritingFeature === "keyword" ? (
+                  <WriteByKeywordForm
+                    onSubmit={handleWriteFormSubmit}
+                    isLoading={isGenerating}
+                  />
                 ) : (
                   <>
                     <div className="space-y-2">
