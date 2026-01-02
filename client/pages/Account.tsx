@@ -1364,17 +1364,69 @@ export default function Account() {
                 <div className="space-y-2">
                   <h1 className="text-4xl font-bold text-foreground">Viết lại</h1>
                   <p className="text-lg text-muted-foreground">
-                    Viết lại bài viết hiện có
+                    Viết lại bài viết, URL hoặc kiểm tra đạo văn
                   </p>
                 </div>
-                <div className="bg-white rounded-2xl border border-border p-8">
-                  <div className="text-center py-16">
-                    <Sparkles className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <h2 className="text-2xl font-bold text-foreground mb-2">
-                      Sắp có tính năng này
-                    </h2>
-                    <p className="text-muted-foreground">
-                      Tính năng viết lại sẽ sớm được cải thiện
+
+                {/* Rewrite Features Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Viết theo từ khoá */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                        <Sparkles className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết theo từ khoá
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Viết lại bài viết dựa trên từ khoá cụ thể
+                    </p>
+                  </div>
+
+                  {/* Viết lại bài viết */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                        <Sparkles className="w-6 h-6 text-green-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết lại bài viết
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Đưa nội dung bài viết vào và AI sẽ viết lại
+                    </p>
+                  </div>
+
+                  {/* Viết lại URL */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg">
+                        <Sparkles className="w-6 h-6 text-purple-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết lại URL
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Cung cấp URL bài viết, AI sẽ lấy và viết lại
+                    </p>
+                  </div>
+
+                  {/* Kiểm tra đạo văn */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-lg">
+                        <Sparkles className="w-6 h-6 text-red-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Kiểm tra đạo văn
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Kiểm tra xem bài viết có bị sao chép hay không
                     </p>
                   </div>
                 </div>
