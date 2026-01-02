@@ -130,24 +130,22 @@ const tones = [
   "Random: Chọn ngẫu nhiên giữa các tone: SEO, Confident, Year In Title, or Friendly",
 ];
 
-const aiOutlineOptions = [
-  "SEO Basic",
-  "SEO Focus",
-  "SEO Extend",
-  "SEO Long Form",
-  "SEO NoFAQ",
-  "Newspaper",
-  "How To",
-  "Story",
-  "Movie Review",
-  "Year In Title",
-  "Confident",
-  "Cooking",
-  "Technical",
-  "Friendly",
-  "Trang đặc biệt",
-  "Random",
-];
+const aiOutlineCategories = {
+  "Dàn ý theo mục tiêu": [
+    { value: "seo-basic", label: "SEO Basic: Tập trung vào từ khóa - Tốt nhất khi từ khóa là dạng câu hỏi 🔥" },
+    { value: "seo-focus", label: "SEO Focus: Tối ưu SEO, có gắng đặt xếp hang SERP cao" },
+    { value: "seo-extend", label: "SEO Extend: Giải thích từ khóa + Viết thêm ý dụ, so sánh 🔥" },
+    { value: "seo-long", label: "SEO Long Form: Viết dài nhất có thể - Giải thích từ khóa, mở rộng nội dung tối đa 🔥" },
+    { value: "seo-nofaq", label: "SEO NoFAQ: Tối ưu SEO, có gắng xếp hạng cao trên SERP, không có FAQ cuối bài" },
+  ],
+  "Dàn ý cơ bản": [
+    { value: "basic-9-10h2", label: "Dàn ý với 9-10 [h2] - Bài viết sẽ dài khoảng 2,500 - 3,500 từ" },
+    { value: "basic-7-8h2", label: "Dàn ý với 7-8 [h2] - Bài viết sẽ dài khoảng 2,100 - 2,500 từ" },
+    { value: "basic-5-6h2", label: "Dàn ý với 5-6 [h2] - Bài viết sẽ dài khoảng 1,500 - 2,000 từ" },
+    { value: "basic-3-4h2", label: "Dàn ý với 3-4 [h2] - Bài viết sẽ dài khoảng 1,000 - 1,500 từ" },
+    { value: "basic-2-3h2", label: "Dàn ý với 2-3 [h2] - Bài viết sẽ dài khoảng ~ 1,000 từ" },
+  ],
+};
 
 const models = [
   "GPT 4.1 MINI",
