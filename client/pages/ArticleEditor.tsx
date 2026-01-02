@@ -515,6 +515,7 @@ export default function ArticleEditor() {
               theme="snow"
               value={content}
               onChange={setContent}
+              onChangeSelection={handleEditorSelection}
               className="h-full rounded-md shadow-sm"
               style={{ height: "calc(100vh - 240px)" }}
               modules={{
