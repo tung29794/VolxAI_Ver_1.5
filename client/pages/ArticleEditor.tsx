@@ -324,38 +324,41 @@ export default function ArticleEditor() {
   };
   const wordCountContent = useMemo(
     () =>
-      content
-        .replace(/<[^>]*>/g, " ")
-        .split(/\s+/)
-        .filter(Boolean).length,
-    [content],
+      content.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length,
+    [content]
   );
   const keywordOccurrences = useMemo(() => {
     const plain = normalize(content.replace(/<[^>]*>/g, " "));
     const totals = keywords.map((k) => {
       const nk = normalize(k);
       if (!nk) return 0;
-      const regex = new RegExp(nk.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+      const regex = new RegExp(
+        nk.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
       return (plain.match(regex) || []).length;
     });
     return totals.reduce((a, b) => a + b, 0);
   }, [content, keywords]);
   const density = useMemo(() => {
     if (wordCountContent === 0) return 0;
-    return +((keywordOccurrences / wordCountContent) * 100).toFixed(2);
+    return +(
+      (keywordOccurrences / wordCountContent) *
+      100
+    ).toFixed(2);
   }, [keywordOccurrences, wordCountContent]);
 
   const hasExternalLink = useMemo(
     () => /<a[^>]+href="http(s)?:\/\//i.test(content),
-    [content],
+    [content]
   );
   const hasInternalLink = useMemo(
     () => /<a[^>]+href="\//i.test(content),
-    [content],
+    [content]
   );
   const hasImageWithAlt = useMemo(
     () => /<img[^>]*alt=\"[^\"]+\"/i.test(content),
-    [content],
+    [content]
   );
   const hasH2H3 = useMemo(() => /<h2>|<h3>/i.test(content), [content]);
 
@@ -363,11 +366,11 @@ export default function ArticleEditor() {
 
   const titleHasKeyword = containsAny(
     metaTitle || title,
-    focusKeywords.length ? focusKeywords : keywords,
+    focusKeywords.length ? focusKeywords : keywords
   );
   const descHasKeyword = containsAny(
     metaDescription,
-    focusKeywords.length ? focusKeywords : keywords,
+    focusKeywords.length ? focusKeywords : keywords
   );
   const urlHasKeyword = useMemo(() => {
     const s = slugify(slug || "");
@@ -387,7 +390,7 @@ export default function ArticleEditor() {
   }, [slug, keywords, focusKeywords]);
   const contentHasKeyword = containsAny(
     content.replace(/<[^>]*>/g, " "),
-    focusKeywords.length ? focusKeywords : keywords,
+    focusKeywords.length ? focusKeywords : keywords
   );
   // Check if the FIRST NON-EMPTY PARAGRAPH contains the focus keyword anywhere
   const firstParagraphHasKeyword = useMemo(() => {
@@ -404,7 +407,7 @@ export default function ArticleEditor() {
       if (paraText) {
         return containsAny(
           paraText,
-          focusKeywords.length ? focusKeywords : keywords,
+          focusKeywords.length ? focusKeywords : keywords
         );
       }
     }
@@ -416,22 +419,19 @@ export default function ArticleEditor() {
       .join(" ");
     return containsAny(
       firstChunk,
-      focusKeywords.length ? focusKeywords : keywords,
+      focusKeywords.length ? focusKeywords : keywords
     );
   }, [content, keywords, focusKeywords]);
 
   const titleContainsKeyword = containsAny(
     metaTitle || title,
-    focusKeywords.length ? focusKeywords : keywords,
+    focusKeywords.length ? focusKeywords : keywords
   );
   const titleHasNumber = /(\d+)/.test(metaTitle || title);
 
   const seoChecks = {
     basic: [
-      {
-        text: "Không thấy từ khóa chính trên SEO title",
-        checked: titleHasKeyword,
-      },
+      { text: "Không thấy từ khóa chính trên SEO title", checked: titleHasKeyword },
       {
         text: "Không thấy từ khóa chính trong SEO Description",
         checked: descHasKeyword,
@@ -448,13 +448,17 @@ export default function ArticleEditor() {
         text: "Không thấy từ khóa chính trong nội dung",
         checked: contentHasKeyword,
       },
-      { text: "Nội dung có ít nhất 600 từ", checked: wordCountContent >= 600 },
+      {
+        text: "Nội dung có ít nhất 600 từ",
+        checked: wordCountContent >= 600,
+      },
     ],
     advanced: [
       {
         text: "Có từ khóa trong H2/H3",
         checked:
-          hasH2H3 && containsAny(content.replace(/<[^>]*>/g, " "), keywords),
+          hasH2H3 &&
+          containsAny(content.replace(/<[^>]*>/g, " "), keywords),
       },
       { text: "Có thẻ IMG với alt", checked: hasImageWithAlt },
       {
@@ -464,17 +468,27 @@ export default function ArticleEditor() {
       {
         text: "URL ngắn gọn (< 75 ký tự)",
         checked:
-          (slug || "").length > 0 && (slug || "").length <= MAX_SLUG_LENGTH,
+          (slug || "").length > 0 &&
+          (slug || "").length <= MAX_SLUG_LENGTH,
       },
       {
         text: "Có ít nhất một link ngoài (DoFollow)",
         checked: hasExternalLink,
       },
-      { text: "Có ít nhất một link nội bộ", checked: hasInternalLink },
+      {
+        text: "Có ít nhất một link nội bộ",
+        checked: hasInternalLink,
+      },
     ],
     title: [
-      { text: "SEO Title chứa từ khóa chính", checked: titleContainsKeyword },
-      { text: "Tiêu đề có chứa con số (vd: 10, 5)", checked: titleHasNumber },
+      {
+        text: "SEO Title chứa từ khóa chính",
+        checked: titleContainsKeyword,
+      },
+      {
+        text: "Tiêu đề có chứa con số (vd: 10, 5)",
+        checked: titleHasNumber,
+      },
     ],
   } as const;
 
@@ -533,9 +547,13 @@ export default function ArticleEditor() {
                     "paragraph-btn": () => {
                       if (quillRef.current) {
                         const editor = quillRef.current.getEditor();
-                        editor.formatLine(editor.getSelection().index, 1, {
-                          header: false,
-                        });
+                        editor.formatLine(
+                          editor.getSelection().index,
+                          1,
+                          {
+                            header: false,
+                          }
+                        );
                       }
                     },
                     "h1-btn": () => {
@@ -682,239 +700,409 @@ export default function ArticleEditor() {
           </div>
         </div>
 
-        {/* SEO Sidebar */}
-        <div className="space-y-4 overflow-y-auto pl-2">
-          <Card>
-            <CardHeader className="p-4">
-              <CardTitle className="flex justify-between items-center text-base">
-                <span>SEO Score</span>
-                <span className="font-bold">{seoScore}%</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <Progress value={seoScore} />
-            </CardContent>
-          </Card>
+        {/* Sidebar with Tabs */}
+        <div className="flex flex-col h-full overflow-hidden pl-2">
+          {/* Tab Navigation */}
+          <div className="flex gap-2 mb-4 border-b flex-shrink-0">
+            {["seo", "ai", "images", "video"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`pb-2 px-3 font-medium text-sm whitespace-nowrap transition-colors ${
+                  activeTab === tab
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {tab === "seo"
+                  ? "SEO"
+                  : tab === "ai"
+                    ? "AI"
+                    : tab === "images"
+                      ? "Hình ảnh"
+                      : "Video"}
+              </button>
+            ))}
+          </div>
 
-          <Card>
-            <CardHeader className="p-4">
-              <CardTitle className="flex justify-between items-center text-base">
-                <span>SERP Preview</span>
-                <Dialog
-                  open={isSerpModalOpen}
-                  onOpenChange={setIsSerpModalOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      Edit
-                    </Button>
-                  </DialogTrigger>
-                  <DialogOverlay className="bg-black/30" />
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-bold">
-                        Google Search Result Preview
-                      </DialogTitle>
-                      <DialogDescription>
-                        Tùy chọn này tương thích với plugin RankMath và Yoast
-                        SEO
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-6 py-4">
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <Label
-                            htmlFor="meta-title"
-                            className="font-semibold text-base"
-                          >
-                            Tiêu đề (SEO Title)
-                          </Label>
-                          <span className="text-sm text-muted-foreground">
-                            {metaTitle.length}/{MAX_META_TITLE_LENGTH}
-                          </span>
-                        </div>
-                        <Input
-                          id="meta-title"
-                          value={metaTitle}
-                          onChange={(e) => setMetaTitle(e.target.value)}
-                          maxLength={MAX_META_TITLE_LENGTH}
-                        />
-                      </div>
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <Label
-                            htmlFor="slug"
-                            className="font-semibold text-base"
-                          >
-                            Permalink
-                          </Label>
-                          <span className="text-sm text-muted-foreground">
-                            {slug.length}/{MAX_SLUG_LENGTH}
-                          </span>
-                        </div>
-                        <Input
-                          id="slug"
-                          value={slug}
-                          onChange={(e) => setSlug(e.target.value)}
-                          maxLength={MAX_SLUG_LENGTH}
-                        />
-                      </div>
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="flex items-center gap-2">
-                            <Label
-                              htmlFor="meta-description"
-                              className="font-semibold text-base"
-                            >
-                              Giới thiệu ngắn
-                            </Label>
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="p-0 h-auto text-blue-600 font-semibold"
-                            >
-                              AI Rewrite <Zap className="w-3 h-3 ml-1" />
-                            </Button>
-                          </div>
-                          <span className="text-sm text-muted-foreground">
-                            {metaDescription.length}/{MAX_META_DESC_LENGTH}
-                          </span>
-                        </div>
-                        <Textarea
-                          id="meta-description"
-                          value={metaDescription}
-                          onChange={(e) => setMetaDescription(e.target.value)}
-                          maxLength={MAX_META_DESC_LENGTH}
-                          rows={4}
-                          placeholder="Tùy chọn giới thiệu trên Serp"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        type="submit"
-                        onClick={() => setIsSerpModalOpen(false)}
-                        size="lg"
+          {/* Tab Content */}
+          <div className="flex-1 overflow-y-auto space-y-4">
+            {/* SEO Tab */}
+            {activeTab === "seo" && (
+              <>
+                <Card>
+                  <CardHeader className="p-4">
+                    <CardTitle className="flex justify-between items-center text-base">
+                      <span>SEO Score</span>
+                      <span className="font-bold">{seoScore}%</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                    <Progress value={seoScore} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-4">
+                    <CardTitle className="flex justify-between items-center text-base">
+                      <span>SERP Preview</span>
+                      <Dialog
+                        open={isSerpModalOpen}
+                        onOpenChange={setIsSerpModalOpen}
                       >
-                        Update
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            Edit
+                          </Button>
+                        </DialogTrigger>
+                        <DialogOverlay className="bg-black/30" />
+                        <DialogContent className="sm:max-w-lg">
+                          <DialogHeader>
+                            <DialogTitle className="text-xl font-bold">
+                              Google Search Result Preview
+                            </DialogTitle>
+                            <DialogDescription>
+                              Tùy chọn này tương thích với plugin RankMath và
+                              Yoast SEO
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-6 py-4">
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <Label
+                                  htmlFor="meta-title"
+                                  className="font-semibold text-base"
+                                >
+                                  Tiêu đề (SEO Title)
+                                </Label>
+                                <span className="text-sm text-muted-foreground">
+                                  {metaTitle.length}/{MAX_META_TITLE_LENGTH}
+                                </span>
+                              </div>
+                              <Input
+                                id="meta-title"
+                                value={metaTitle}
+                                onChange={(e) =>
+                                  setMetaTitle(e.target.value)
+                                }
+                                maxLength={MAX_META_TITLE_LENGTH}
+                              />
+                            </div>
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <Label
+                                  htmlFor="slug"
+                                  className="font-semibold text-base"
+                                >
+                                  Permalink
+                                </Label>
+                                <span className="text-sm text-muted-foreground">
+                                  {slug.length}/{MAX_SLUG_LENGTH}
+                                </span>
+                              </div>
+                              <Input
+                                id="slug"
+                                value={slug}
+                                onChange={(e) => setSlug(e.target.value)}
+                                maxLength={MAX_SLUG_LENGTH}
+                              />
+                            </div>
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Label
+                                    htmlFor="meta-description"
+                                    className="font-semibold text-base"
+                                  >
+                                    Giới thiệu ngắn
+                                  </Label>
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="p-0 h-auto text-blue-600 font-semibold"
+                                  >
+                                    AI Rewrite{" "}
+                                    <Zap className="w-3 h-3 ml-1" />
+                                  </Button>
+                                </div>
+                                <span className="text-sm text-muted-foreground">
+                                  {metaDescription.length}/
+                                  {MAX_META_DESC_LENGTH}
+                                </span>
+                              </div>
+                              <Textarea
+                                id="meta-description"
+                                value={metaDescription}
+                                onChange={(e) =>
+                                  setMetaDescription(e.target.value)
+                                }
+                                maxLength={MAX_META_DESC_LENGTH}
+                                rows={4}
+                                placeholder="Tùy chọn giới thiệu trên Serp"
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              type="submit"
+                              onClick={() => setIsSerpModalOpen(false)}
+                              size="lg"
+                            >
+                              Update
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                    <div className="text-sm text-blue-600 truncate">
+                      {metaTitle || title || "SEO Title"}
+                    </div>
+                    <div className="text-sm text-green-600 truncate">
+                      https://volxai.com/{slug || ""}
+                    </div>
+                    <div className="text-sm text-muted-foreground line-clamp-2">
+                      {metaDescription ||
+                        "Meta description preview will appear here."}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-base flex justify-between items-center">
+                      <span>Từ khóa</span>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-blue-600"
+                      >
+                        In Đậm
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-sm text-blue-600 truncate">
-                {metaTitle || title || "SEO Title"}
-              </div>
-              <div className="text-sm text-green-600 truncate">
-                https://volxai.com/{slug || ""}
-              </div>
-              <div className="text-sm text-muted-foreground line-clamp-2">
-                {metaDescription ||
-                  "Meta description preview will appear here."}
-              </div>
-            </CardContent>
-          </Card>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                    <Input
+                      placeholder="Nhập từ khoá và nhấn Enter"
+                      value={keywordInput}
+                      onChange={(e) => setKeywordInput(e.target.value)}
+                      onKeyDown={handleKeywordKeyDown}
+                    />
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {keywords.map((keyword, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center bg-blue-100 text-blue-700 text-sm font-medium px-2 py-1 rounded-md"
+                        >
+                          <span>{keyword}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 ml-1"
+                            onClick={() => removeKeyword(keyword)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
 
-          <Card>
-            <CardHeader className="p-4">
-              <CardTitle className="text-base flex justify-between items-center">
-                <span>Từ khóa</span>
-                <Button variant="link" size="sm" className="text-blue-600">
-                  In Đậm
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <Input
-                placeholder="Nhập từ khoá và nhấn Enter"
-                value={keywordInput}
-                onChange={(e) => setKeywordInput(e.target.value)}
-                onKeyDown={handleKeywordKeyDown}
-              />
-              <div className="flex flex-wrap gap-2 mt-3">
-                {keywords.map((keyword, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center bg-blue-100 text-blue-700 text-sm font-medium px-2 py-1 rounded-md"
-                  >
-                    <span>{keyword}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 ml-1"
-                      onClick={() => removeKeyword(keyword)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                <Accordion
+                  type="single"
+                  collapsible
+                  className="w-full"
+                  value={accordionValue}
+                  onValueChange={setAccordionValue}
+                >
+                  <AccordionItem value="basic">
+                    <AccordionTrigger>
+                      SEO Cơ bản (
+                      {
+                        seoChecks.basic.filter((c) => !c.checked)
+                          .length
+                      }{" "}
+                      Errors)
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <ul className="space-y-2">
+                        {seoChecks.basic.map((item, index) => (
+                          <SeoChecklistItem
+                            key={index}
+                            text={item.text}
+                            checked={item.checked}
+                          />
+                        ))}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="advanced">
+                    <AccordionTrigger>
+                      Nâng cao (
+                      {
+                        seoChecks.advanced.filter((c) => !c.checked)
+                          .length
+                      }{" "}
+                      Errors)
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <ul className="space-y-2">
+                        {seoChecks.advanced.map((item, index) => (
+                          <SeoChecklistItem
+                            key={index}
+                            text={item.text}
+                            checked={item.checked}
+                          />
+                        ))}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="title">
+                    <AccordionTrigger>
+                      Tiêu đề thu hút (
+                      {
+                        seoChecks.title.filter((c) => !c.checked)
+                          .length
+                      }{" "}
+                      Errors)
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <ul className="space-y-2">
+                        {seoChecks.title.map((item, index) => (
+                          <SeoChecklistItem
+                            key={index}
+                            text={item.text}
+                            checked={item.checked}
+                          />
+                        ))}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </>
+            )}
+
+            {/* Images Tab */}
+            {activeTab === "images" && (
+              <div className="space-y-4">
+                {isSearchingImages && (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                )}
 
-          <Accordion
-            type="single"
-            collapsible
-            className="w-full"
-            value={accordionValue}
-            onValueChange={setAccordionValue}
-          >
-            <AccordionItem value="basic">
-              <AccordionTrigger>
-                SEO Cơ bản ({seoChecks.basic.filter((c) => !c.checked).length}{" "}
-                Errors)
-              </AccordionTrigger>
-              <AccordionContent>
-                <ul className="space-y-2">
-                  {seoChecks.basic.map((item, index) => (
-                    <SeoChecklistItem
-                      key={index}
-                      text={item.text}
-                      checked={item.checked}
-                    />
-                  ))}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="advanced">
-              <AccordionTrigger>
-                Nâng cao ({seoChecks.advanced.filter((c) => !c.checked).length}{" "}
-                Errors)
-              </AccordionTrigger>
-              <AccordionContent>
-                <ul className="space-y-2">
-                  {seoChecks.advanced.map((item, index) => (
-                    <SeoChecklistItem
-                      key={index}
-                      text={item.text}
-                      checked={item.checked}
-                    />
-                  ))}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="title">
-              <AccordionTrigger>
-                Tiêu đề thu hút (
-                {seoChecks.title.filter((c) => !c.checked).length} Errors)
-              </AccordionTrigger>
-              <AccordionContent>
-                <ul className="space-y-2">
-                  {seoChecks.title.map((item, index) => (
-                    <SeoChecklistItem
-                      key={index}
-                      text={item.text}
-                      checked={item.checked}
-                    />
-                  ))}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+                {searchedImages.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {searchedImages.map((image, index) => (
+                      <div
+                        key={index}
+                        className="relative group cursor-pointer rounded-lg overflow-hidden bg-gray-200 aspect-square"
+                      >
+                        <img
+                          src={image.thumbnail || image.original}
+                          alt={image.title || `Image ${index + 1}`}
+                          className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (quillRef.current) {
+                                const editor =
+                                  quillRef.current.getEditor();
+                                const selection =
+                                  editor.getSelection();
+                                if (selection) {
+                                  editor.insertEmbed(
+                                    selection.index,
+                                    "image",
+                                    image.original ||
+                                      image.thumbnail
+                                  );
+                                  editor.setSelection(
+                                    selection.index + 1
+                                  );
+                                }
+                              }
+                            }}
+                          >
+                            Insert
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!isSearchingImages && searchedImages.length === 0 && (
+                  <div className="flex flex-col items-center justify-center p-8 text-gray-500">
+                    <ImageIcon className="w-12 h-12 mb-2 opacity-30" />
+                    <p className="text-sm">
+                      Chọn từ khóa và nhấp "Find Image" để tìm hình ảnh
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* AI Tab */}
+            {activeTab === "ai" && (
+              <Card>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-base">AI Tools</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-3">
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={handleOpenRewriteModal}
+                    disabled={!selectedText}
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    Rewrite Text
+                  </Button>
+                  <p className="text-xs text-gray-500">
+                    Chọn text trong editor để sử dụng các công cụ AI
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Video Tab */}
+            {activeTab === "video" && (
+              <Card>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-base">Video</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <Button
+                    className="w-full"
+                    onClick={handleInsertVideo}
+                  >
+                    Insert Video
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-3">
+                    Click để chèn video YouTube hoặc URL video trực tiếp
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Floating Selection Toolbar */}
+      {floatingToolbarVisible && selectedText && (
+        <SelectionToolbar
+          selectedText={selectedText}
+          onAIRewrite={handleOpenRewriteModal}
+          onFindImage={handleFindImage}
+          onWriteMore={handleWriteMore}
+          isLoading={isRewriting || isSearchingImages}
+        />
+      )}
 
       {/* AI Rewrite Modal */}
       <Dialog open={isRewriteModalOpen} onOpenChange={setIsRewriteModalOpen}>
