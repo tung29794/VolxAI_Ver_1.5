@@ -54,6 +54,8 @@ export default function Account() {
   });
 
   const [activeWritingFeature, setActiveWritingFeature] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationFormData, setGenerationFormData] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     username: "",
