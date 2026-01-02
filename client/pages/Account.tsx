@@ -27,6 +27,7 @@ import { PlanSelectionModal } from "@/components/PlanSelectionModal";
 import { toast } from "sonner";
 import { buildApiUrl } from "@/lib/api";
 import WriteByKeywordForm from "@/components/WriteByKeywordForm";
+import WritingProgressView from "@/components/WritingProgressView";
 
 type AccountTab =
   | "profile"
