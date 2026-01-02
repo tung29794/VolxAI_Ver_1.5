@@ -260,9 +260,15 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
               value={formData.keyword}
               onChange={handleChange}
               placeholder="Nhập từ khóa của bạn"
-              className="w-full p-3 border border-border rounded-lg text-sm resize-none focus:outline-none focus:border-primary"
+              className={`w-full p-3 border rounded-lg text-sm resize-none focus:outline-none focus:border-primary ${
+                errors.keyword ? "border-destructive" : "border-border"
+              }`}
               rows={3}
+              disabled={isLoading}
             />
+            {errors.keyword && (
+              <p className="text-sm text-destructive">{errors.keyword}</p>
+            )}
             <p className="text-xs text-muted-foreground">
               Bạn có thể thêm từ khóa phụ dưới định dạng: từ khóa chính, từ khóa phụ 1, từ khóa phụ 2
             </p>
