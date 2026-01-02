@@ -326,7 +326,39 @@ export default function ArticleEditor() {
                 z-index: 10;
                 background: #fff;
               }
-                img {
+              .ql-toolbar.ql-snow .ql-stroke {
+                stroke: #444;
+              }
+              .ql-toolbar.ql-snow .ql-fill {
+                fill: #444;
+              }
+              .ql-toolbar.ql-snow button:hover .ql-stroke,
+              .ql-toolbar.ql-snow button:focus .ql-stroke,
+              .ql-toolbar.ql-snow button.ql-active .ql-stroke {
+                stroke: #1f2937;
+              }
+              .ql-toolbar.ql-snow button:hover .ql-fill,
+              .ql-toolbar.ql-snow button:focus .ql-fill,
+              .ql-toolbar.ql-snow button.ql-active .ql-fill {
+                fill: #1f2937;
+              }
+              .ql-toolbar.ql-snow button.ql-picker-label {
+                color: #444;
+              }
+              .ql-toolbar.ql-snow .ql-ai-rewrite::before {
+                content: "⚡ AI";
+                font-size: 12px;
+                font-weight: 600;
+              }
+              .ql-toolbar.ql-snow .ql-ai-rewrite {
+                background-color: #dbeafe;
+                border-radius: 4px;
+                padding: 4px 8px;
+              }
+              .ql-toolbar.ql-snow .ql-ai-rewrite:hover {
+                background-color: #bfdbfe;
+              }
+              img {
                     margin: auto;
                 }
               .ql-container.ql-snow {
