@@ -480,6 +480,18 @@ export default function ArticleEditor() {
                 top: 0;
                 z-index: 10;
                 background: #fff;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                padding: 8px;
+                min-height: auto;
+              }
+              .ql-toolbar.ql-snow .ql-formats {
+                display: flex;
+                flex-wrap: nowrap;
+                gap: 2px;
+                margin-right: 0;
+                margin-bottom: 0;
               }
               .ql-toolbar.ql-snow .ql-stroke {
                 stroke: #444;
@@ -499,6 +511,30 @@ export default function ArticleEditor() {
               }
               .ql-toolbar.ql-snow button.ql-picker-label {
                 color: #444;
+              }
+              .ql-toolbar.ql-snow .ql-paragraph-btn::before {
+                content: "P";
+                font-weight: 700;
+                font-size: 14px;
+              }
+              .ql-toolbar.ql-snow .ql-h1-btn::before {
+                content: "H1";
+                font-weight: 700;
+                font-size: 12px;
+              }
+              .ql-toolbar.ql-snow .ql-h2-btn::before {
+                content: "H2";
+                font-weight: 700;
+                font-size: 12px;
+              }
+              .ql-toolbar.ql-snow .ql-h3-btn::before {
+                content: "H3";
+                font-weight: 700;
+                font-size: 12px;
+              }
+              .ql-toolbar.ql-snow .ql-video-btn::before {
+                content: "▶";
+                font-size: 14px;
               }
               .ql-toolbar.ql-snow .ql-ai-rewrite::before {
                 content: "⚡ AI";
