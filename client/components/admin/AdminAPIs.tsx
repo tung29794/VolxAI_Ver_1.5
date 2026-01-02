@@ -116,9 +116,7 @@ export default function AdminAPIs() {
     setIsSubmitting(true);
     try {
       const method = editingId ? "PUT" : "POST";
-      const url = editingId
-        ? `/api/api-keys/${editingId}`
-        : "/api/api-keys";
+      const url = editingId ? `/api/api-keys/${editingId}` : "/api/api-keys";
 
       const response = await fetch(url, {
         method,
@@ -130,11 +128,7 @@ export default function AdminAPIs() {
 
       setIsDialogOpen(false);
       await loadAPIKeys();
-      alert(
-        editingId
-          ? "API key đã được cập nhật"
-          : "API key đã được thêm"
-      );
+      alert(editingId ? "API key đã được cập nhật" : "API key đã được thêm");
     } catch (error) {
       console.error("Error saving API key:", error);
       alert("Lỗi khi lưu API key");
@@ -169,7 +163,7 @@ export default function AdminAPIs() {
       acc[key.category].push(key);
       return acc;
     },
-    {} as Record<string, APIKey[]>
+    {} as Record<string, APIKey[]>,
   );
 
   return (
@@ -192,13 +186,10 @@ export default function AdminAPIs() {
         <CardContent className="pt-6 flex gap-3">
           <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-blue-900">
-            <p className="font-medium mb-1">
-              Lưu ý bảo mật:
-            </p>
+            <p className="font-medium mb-1">Lưu ý bảo mật:</p>
             <p>
-              Các API keys được mã hóa và lưu trữ an toàn. Chỉ
-              hiển thị các ký tự cuối để bảo vệ thông tin
-              nhạy cảm.
+              Các API keys được mã hóa và lưu trữ an toàn. Chỉ hiển thị các ký
+              tự cuối để bảo vệ thông tin nhạy cảm.
             </p>
           </div>
         </CardContent>
@@ -212,13 +203,8 @@ export default function AdminAPIs() {
       ) : Object.keys(groupedByCategory).length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">
-              Chưa có API key nào
-            </p>
-            <Button
-              onClick={() => handleOpenDialog()}
-              variant="outline"
-            >
+            <p className="text-muted-foreground mb-4">Chưa có API key nào</p>
+            <Button onClick={() => handleOpenDialog()} variant="outline">
               Thêm API key đầu tiên
             </Button>
           </CardContent>
@@ -239,16 +225,10 @@ export default function AdminAPIs() {
                     apiKey={key}
                     showKey={showKey === key.id}
                     onToggleShow={() =>
-                      setShowKey(
-                        showKey === key.id
-                          ? null
-                          : key.id!
-                      )
+                      setShowKey(showKey === key.id ? null : key.id!)
                     }
                     onEdit={() => handleOpenDialog(key)}
-                    onDelete={() =>
-                      setDeleteConfirm(key.id!)
-                    }
+                    onDelete={() => setDeleteConfirm(key.id!)}
                     isDeleting={isSubmitting}
                   />
                 ))}
@@ -270,16 +250,10 @@ export default function AdminAPIs() {
                     apiKey={key}
                     showKey={showKey === key.id}
                     onToggleShow={() =>
-                      setShowKey(
-                        showKey === key.id
-                          ? null
-                          : key.id!
-                      )
+                      setShowKey(showKey === key.id ? null : key.id!)
                     }
                     onEdit={() => handleOpenDialog(key)}
-                    onDelete={() =>
-                      setDeleteConfirm(key.id!)
-                    }
+                    onDelete={() => setDeleteConfirm(key.id!)}
                     isDeleting={isSubmitting}
                   />
                 ))}
@@ -294,9 +268,7 @@ export default function AdminAPIs() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingId
-                ? "Sửa API Key"
-                : "Thêm API Key mới"}
+              {editingId ? "Sửa API Key" : "Thêm API Key mới"}
             </DialogTitle>
             <DialogDescription>
               {editingId
@@ -322,20 +294,14 @@ export default function AdminAPIs() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="content">
-                    API Tạo nội dung
-                  </SelectItem>
-                  <SelectItem value="search">
-                    API Tìm kiếm
-                  </SelectItem>
+                  <SelectItem value="content">API Tạo nội dung</SelectItem>
+                  <SelectItem value="search">API Tìm kiếm</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="provider">
-                Nhà cung cấp *
-              </Label>
+              <Label htmlFor="provider">Nhà cung cấp *</Label>
               <Select
                 value={formData.provider}
                 onValueChange={(v) =>
@@ -350,14 +316,10 @@ export default function AdminAPIs() {
                 </SelectTrigger>
                 <SelectContent>
                   {(
-                    API_PROVIDERS[
-                      formData.category as "content" | "search"
-                    ] || []
+                    API_PROVIDERS[formData.category as "content" | "search"] ||
+                    []
                   ).map((provider) => (
-                    <SelectItem
-                      key={provider.value}
-                      value={provider.value}
-                    >
+                    <SelectItem key={provider.value} value={provider.value}>
                       {provider.label}
                     </SelectItem>
                   ))}
@@ -382,9 +344,7 @@ export default function AdminAPIs() {
             </div>
 
             <div>
-              <Label htmlFor="description">
-                Mô tả
-              </Label>
+              <Label htmlFor="description">Mô tả</Label>
               <Textarea
                 id="description"
                 value={formData.description}
@@ -411,10 +371,7 @@ export default function AdminAPIs() {
                   })
                 }
               />
-              <Label
-                htmlFor="is-active"
-                className="cursor-pointer"
-              >
+              <Label htmlFor="is-active" className="cursor-pointer">
                 Kích hoạt API key này
               </Label>
             </div>
@@ -428,10 +385,7 @@ export default function AdminAPIs() {
             >
               Hủy
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={isSubmitting}
-            >
+            <Button onClick={handleSave} disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -457,8 +411,8 @@ export default function AdminAPIs() {
             <DialogHeader>
               <DialogTitle>Xóa API Key</DialogTitle>
               <DialogDescription>
-                Bạn có chắc chắn muốn xóa API key này?
-                Hành động này không thể hoàn tác.
+                Bạn có chắc chắn muốn xóa API key này? Hành động này không thể
+                hoàn tác.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -471,9 +425,7 @@ export default function AdminAPIs() {
               </Button>
               <Button
                 variant="destructive"
-                onClick={() =>
-                  handleDelete(deleteConfirm)
-                }
+                onClick={() => handleDelete(deleteConfirm)}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
@@ -516,21 +468,13 @@ function APIKeyCard({
     : `${apiKey.api_key.substring(0, 4)}...${apiKey.api_key.slice(-4)}`;
 
   return (
-    <Card
-      className={`${
-        !apiKey.is_active
-          ? "opacity-60 bg-gray-50"
-          : ""
-      }`}
-    >
+    <Card className={`${!apiKey.is_active ? "opacity-60 bg-gray-50" : ""}`}>
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="font-semibold capitalize">
-                {apiKey.provider
-                  .replace("-", " ")
-                  .replace("api", "API")}
+                {apiKey.provider.replace("-", " ").replace("api", "API")}
               </h3>
               {!apiKey.is_active && (
                 <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded">
@@ -544,15 +488,11 @@ function APIKeyCard({
               </p>
             )}
             <div className="flex items-center gap-2 font-mono text-sm">
-              <code className="bg-muted px-2 py-1 rounded">
-                {displayKey}
-              </code>
+              <code className="bg-muted px-2 py-1 rounded">{displayKey}</code>
               <button
                 onClick={onToggleShow}
                 className="p-1 hover:bg-muted rounded transition-colors"
-                title={
-                  showKey ? "Ẩn key" : "Hiện key"
-                }
+                title={showKey ? "Ẩn key" : "Hiện key"}
               >
                 {showKey ? (
                   <EyeOff className="w-4 h-4" />

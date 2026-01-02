@@ -105,7 +105,10 @@ export default function WritingProgressView({
             Đang tạo bài viết...
           </h1>
           <p className="text-lg text-muted-foreground">
-            AI đang viết bài viết dựa trên từ khóa: <span className="font-semibold text-foreground">{formData.keyword}</span>
+            AI đang viết bài viết dựa trên từ khóa:{" "}
+            <span className="font-semibold text-foreground">
+              {formData.keyword}
+            </span>
           </p>
         </div>
         {!isComplete && (

@@ -31,16 +31,13 @@ const handleGetAPIKeys: RequestHandler = async (req, res) => {
     const apiKeys = await query<any>(sql, params);
 
     // Group by category
-    const grouped = apiKeys.reduce(
-      (acc: any, key: any) => {
-        if (!acc[key.category]) {
-          acc[key.category] = [];
-        }
-        acc[key.category].push(key);
-        return acc;
-      },
-      {}
-    );
+    const grouped = apiKeys.reduce((acc: any, key: any) => {
+      if (!acc[key.category]) {
+        acc[key.category] = [];
+      }
+      acc[key.category].push(key);
+      return acc;
+    }, {});
 
     res.json({ apiKeys, grouped });
   } catch (error) {
@@ -64,7 +61,7 @@ const handleCreateAPIKey: RequestHandler = async (req, res) => {
     const result = await execute(
       `INSERT INTO api_keys (provider, category, api_key, description, is_active, created_at)
        VALUES (?, ?, ?, ?, ?, NOW())`,
-      [provider, category, api_key, description || null, is_active !== false]
+      [provider, category, api_key, description || null, is_active !== false],
     );
 
     res.status(201).json({
@@ -87,7 +84,7 @@ const handleUpdateAPIKey: RequestHandler = async (req, res) => {
       `UPDATE api_keys 
        SET provider = ?, category = ?, api_key = ?, description = ?, is_active = ?
        WHERE id = ?`,
-      [provider, category, api_key, description || null, is_active, id]
+      [provider, category, api_key, description || null, is_active, id],
     );
 
     if ((result as any).affectedRows === 0) {

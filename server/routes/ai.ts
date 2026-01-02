@@ -22,10 +22,9 @@ async function verifyUser(req: Request, res: Response): Promise<boolean> {
       process.env.JWT_SECRET || "your-secret-key",
     ) as { userId: number };
 
-    const user = await queryOne<any>(
-      "SELECT id FROM users WHERE id = ?",
-      [decoded.userId],
-    );
+    const user = await queryOne<any>("SELECT id FROM users WHERE id = ?", [
+      decoded.userId,
+    ]);
 
     if (!user) {
       res.status(403).json({
@@ -170,7 +169,7 @@ const handleFindImage: RequestHandler = async (req, res) => {
       `SELECT id, provider, api_key FROM image_search_api_keys
        WHERE is_active = TRUE
        ORDER BY quota_remaining DESC
-       LIMIT 1`
+       LIMIT 1`,
     );
 
     if (apiKeys.length === 0) {
@@ -186,7 +185,7 @@ const handleFindImage: RequestHandler = async (req, res) => {
     try {
       if (provider === "serpapi") {
         const response = await fetch(
-          `https://serpapi.com/search?q=${encodeURIComponent(keyword)}&tbm=isch&api_key=${api_key}`
+          `https://serpapi.com/search?q=${encodeURIComponent(keyword)}&tbm=isch&api_key=${api_key}`,
         );
         const data = await response.json();
         images = (data.images_results || []).slice(0, 10).map((img: any) => ({
@@ -213,7 +212,7 @@ const handleFindImage: RequestHandler = async (req, res) => {
         }));
       } else if (provider === "zenserp") {
         const response = await fetch(
-          `https://api.zenserp.com/v1/search?q=${encodeURIComponent(keyword)}&tbm=isch&apikey=${api_key}`
+          `https://api.zenserp.com/v1/search?q=${encodeURIComponent(keyword)}&tbm=isch&apikey=${api_key}`,
         );
         const data = await response.json();
         images = (data.images || []).slice(0, 10).map((img: any) => ({
@@ -234,7 +233,7 @@ const handleFindImage: RequestHandler = async (req, res) => {
         `UPDATE image_search_api_keys
          SET quota_remaining = quota_remaining - 1, last_used_at = NOW()
          WHERE id = ?`,
-        [keyId]
+        [keyId],
       );
     }
 
@@ -333,13 +332,8 @@ const handleGenerateArticle: RequestHandler = async (req, res) => {
   try {
     if (!(await verifyUser(req, res))) return;
 
-    const {
-      keyword,
-      language,
-      outlineType,
-      tone,
-      model,
-    } = req.body as GenerateArticleRequest;
+    const { keyword, language, outlineType, tone, model } =
+      req.body as GenerateArticleRequest;
 
     if (!keyword || !language || !tone || !model) {
       res.status(400).json({
@@ -406,28 +400,32 @@ Use proper formatting with headings (h2, h3) and paragraphs.`;
     }
 
     // Generate title from keyword
-    const titleResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+    const titleResponse = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Generate a compelling, SEO-friendly title for an article. Return only the title.",
+            },
+            {
+              role: "user",
+              content: `Generate a title for an article about: "${keyword}"`,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 100,
+        }),
       },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: "Generate a compelling, SEO-friendly title for an article. Return only the title.",
-          },
-          {
-            role: "user",
-            content: `Generate a title for an article about: "${keyword}"`,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 100,
-      }),
-    });
+    );
 
     const titleData = await titleResponse.json();
     const title = titleData.choices[0]?.message?.content?.trim() || keyword;
@@ -462,7 +460,7 @@ Use proper formatting with headings (h2, h3) and paragraphs.`;
         slug,
         JSON.stringify([keyword]),
         "draft",
-      ]
+      ],
     );
 
     res.status(201).json({

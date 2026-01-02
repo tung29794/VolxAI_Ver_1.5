@@ -46,14 +46,16 @@ export default function Account() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<AccountTab>("profile");
   const [sidebarOpen, setSidebarOpen] = useState(
-    typeof window !== "undefined" && window.innerWidth >= 768
+    typeof window !== "undefined" && window.innerWidth >= 768,
   );
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     writing: true,
     config: false,
   });
 
-  const [activeWritingFeature, setActiveWritingFeature] = useState<string | null>(null);
+  const [activeWritingFeature, setActiveWritingFeature] = useState<
+    string | null
+  >(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationFormData, setGenerationFormData] = useState<any>(null);
 
@@ -787,7 +789,10 @@ export default function Account() {
                   <div className="space-y-4">
                     {/* Username - Disabled */}
                     <div className="space-y-2">
-                      <Label htmlFor="username" className="text-base font-medium">
+                      <Label
+                        htmlFor="username"
+                        className="text-base font-medium"
+                      >
                         Tên tài khoản
                       </Label>
                       <Input
@@ -804,7 +809,10 @@ export default function Account() {
 
                     {/* Full Name */}
                     <div className="space-y-2">
-                      <Label htmlFor="fullName" className="text-base font-medium">
+                      <Label
+                        htmlFor="fullName"
+                        className="text-base font-medium"
+                      >
                         Họ và tên
                       </Label>
                       {!isEditingFullName ? (
@@ -893,7 +901,9 @@ export default function Account() {
 
                     {/* Account Type */}
                     <div className="space-y-2">
-                      <Label className="text-base font-medium">Gói dịch vụ</Label>
+                      <Label className="text-base font-medium">
+                        Gói dịch vụ
+                      </Label>
                       <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-xl gap-4">
                         <div className="flex items-center gap-3 flex-1">
                           <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg flex-shrink-0">
@@ -911,9 +921,9 @@ export default function Account() {
                             {subscription?.expires_at && (
                               <p className="text-xs text-muted-foreground mt-1">
                                 Hết hạn:{" "}
-                                {new Date(subscription.expires_at).toLocaleDateString(
-                                  "vi-VN",
-                                )}
+                                {new Date(
+                                  subscription.expires_at,
+                                ).toLocaleDateString("vi-VN")}
                               </p>
                             )}
                           </div>
@@ -968,7 +978,8 @@ export default function Account() {
                             <div className="flex items-center justify-between">
                               <div className="space-y-1 flex-1">
                                 <p className="font-semibold text-foreground">
-                                  Nâng cấp từ {history.fromPlan} → {history.toPlan}
+                                  Nâng cấp từ {history.fromPlan} →{" "}
+                                  {history.toPlan}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
                                   {history.date}
@@ -1101,7 +1112,9 @@ export default function Account() {
                             value={passwordData.newPassword}
                             onChange={handlePasswordChange}
                             className={`h-12 text-base pl-10 ${
-                              passwordErrors.newPassword ? "border-destructive" : ""
+                              passwordErrors.newPassword
+                                ? "border-destructive"
+                                : ""
                             }`}
                           />
                         </div>
@@ -1150,7 +1163,9 @@ export default function Account() {
                           disabled={passwordLoading}
                           className="flex-1 bg-primary hover:bg-primary/90 h-12 text-base disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {passwordLoading ? "Đang xử lý..." : "Lưu mật khẩu mới"}
+                          {passwordLoading
+                            ? "Đang xử lý..."
+                            : "Lưu mật khẩu mới"}
                         </Button>
                         <Button
                           type="button"
@@ -1216,143 +1231,147 @@ export default function Account() {
 
                     {/* Writing Features Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Viết theo từ khóa */}
-                  <button
-                    onClick={() => setActiveWritingFeature("keyword")}
-                    className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer text-left"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
-                        <FileText className="w-6 h-6 text-blue-600" />
-                      </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết theo từ khóa
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Nhập từ khóa, độ dài, phong cách, sẽ giúp bạn viết bài nhanh chóng
-                    </p>
-                  </button>
+                      {/* Viết theo từ khóa */}
+                      <button
+                        onClick={() => setActiveWritingFeature("keyword")}
+                        className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer text-left"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                            <FileText className="w-6 h-6 text-blue-600" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Viết theo từ khóa
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Nhập từ khóa, độ dài, phong cách, sẽ giúp bạn viết bài
+                          nhanh chóng
+                        </p>
+                      </button>
 
-                  {/* Viết bài ngắn gọn */}
-                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
-                        <FileText className="w-6 h-6 text-green-600" />
+                      {/* Viết bài ngắn gọn */}
+                      <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                            <FileText className="w-6 h-6 text-green-600" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Viết bài ngắn gọn
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Bài viết ngắn khoảng 1.200 từ, tập trung vào từ khóa
+                          chính
+                        </p>
                       </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết bài ngắn gọn
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Bài viết ngắn khoảng 1.200 từ, tập trung vào từ khóa chính
-                    </p>
-                  </div>
 
-                  {/* Viết Tin Tức */}
-                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg">
-                        <FileText className="w-6 h-6 text-purple-600" />
+                      {/* Viết Tin Tức */}
+                      <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg">
+                            <FileText className="w-6 h-6 text-purple-600" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Viết Tin Tức
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Nội dung cập nhật theo ngày, phù hợp theo các website
+                          tin tức
+                        </p>
                       </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết Tin Tức
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Nội dung cập nhật theo ngày, phù hợp theo các website tin tức
-                    </p>
-                  </div>
 
-                  {/* Viết từ Google Search */}
-                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
-                        <FileText className="w-6 h-6 text-blue-600" />
+                      {/* Viết từ Google Search */}
+                      <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                            <FileText className="w-6 h-6 text-blue-600" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Viết từ Google Search
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Đề dàng lập lộp và viết vào Google AI Overviews
+                        </p>
                       </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết từ Google Search
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Đề dàng lập lộp và viết vào Google AI Overviews
-                    </p>
-                  </div>
 
-                  {/* Viết theo dàn ý */}
-                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
-                        <FileText className="w-6 h-6 text-green-600" />
+                      {/* Viết theo dàn ý */}
+                      <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                            <FileText className="w-6 h-6 text-green-600" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Viết theo dàn ý
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Dựa trên dàn ý của bạn, viết bài với độ chính xác cao
+                        </p>
                       </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết theo dàn ý
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Dựa trên dàn ý của bạn, viết bài với độ chính xác cao
-                    </p>
-                  </div>
 
-                  {/* Write Product Review */}
-                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-lg">
-                        <FileText className="w-6 h-6 text-yellow-600" />
+                      {/* Write Product Review */}
+                      <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-lg">
+                            <FileText className="w-6 h-6 text-yellow-600" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Write Product Review
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Viết đánh giá, nhận xét chi tiết sản phẩm
+                        </p>
                       </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Write Product Review
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Viết đánh giá, nhận xét chi tiết sản phẩm
-                    </p>
-                  </div>
 
-                  {/* Viết dạng toplist */}
-                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg">
-                        <FileText className="w-6 h-6 text-indigo-600" />
+                      {/* Viết dạng toplist */}
+                      <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg">
+                            <FileText className="w-6 h-6 text-indigo-600" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Viết bài dạng toplist
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Viết bài dạng toplist, the best, sản phẩm tốt nhất
+                        </p>
                       </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết bài dạng toplist
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Viết bài dạng toplist, the best, sản phẩm tốt nhất
-                    </p>
-                  </div>
 
-                  {/* Viết với trình soạn thảo AI */}
-                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-pink-100 rounded-lg">
-                        <Sparkles className="w-6 h-6 text-pink-600" />
+                      {/* Viết với trình soạn thảo AI */}
+                      <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center justify-center w-12 h-12 bg-pink-100 rounded-lg">
+                            <Sparkles className="w-6 h-6 text-pink-600" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Viết với trình soạn thảo AI
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Tự do sử dụng trình soạn thảo AI và viết theo ý thích
+                          của bạn
+                        </p>
                       </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết với trình soạn thảo AI
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Tự do sử dụng trình soạn thảo AI và viết theo ý thích của bạn
-                    </p>
-                  </div>
 
-                  {/* Viết từ Facebook Post */}
-                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
-                        <FileText className="w-6 h-6 text-blue-600" />
+                      {/* Viết từ Facebook Post */}
+                      <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                            <FileText className="w-6 h-6 text-blue-600" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Viết từ Facebook Post
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Chuyển nội dung Facebook Post thành bài viết
+                        </p>
                       </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết từ Facebook Post
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Chuyển nội dung Facebook Post thành bài viết
-                    </p>
-                  </div>
                     </div>
                   </>
                 )}
@@ -1425,7 +1444,9 @@ export default function Account() {
             {activeTab === "rewrite" && (
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <h1 className="text-4xl font-bold text-foreground">Viết lại</h1>
+                  <h1 className="text-4xl font-bold text-foreground">
+                    Viết lại
+                  </h1>
                   <p className="text-lg text-muted-foreground">
                     Viết lại bài viết, URL hoặc kiểm tra đạo văn
                   </p>
@@ -1546,7 +1567,8 @@ export default function Account() {
                       Dùng Google Search Console
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Phân tích số lượng hiển thị, click, từ khóa để tối ưu bài cũ
+                      Phân tích số lượng hiển thị, click, từ khóa để tối ưu bài
+                      cũ
                     </p>
                   </div>
                 </div>
@@ -1603,7 +1625,8 @@ export default function Account() {
                       Index bài viết lên Google
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Nộp URL bài viết lên Google để được lập chỉ mục nhanh chóng
+                      Nộp URL bài viết lên Google để được lập chỉ mục nhanh
+                      chóng
                     </p>
                   </div>
 

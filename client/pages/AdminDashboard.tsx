@@ -21,14 +21,20 @@ import AdminFeatures from "@/components/admin/AdminFeatures";
 import AdminAPIs from "@/components/admin/AdminAPIs";
 import { Settings } from "lucide-react";
 
-type AdminTab = "overview" | "articles" | "payments" | "plans" | "features" | "apis";
+type AdminTab =
+  | "overview"
+  | "articles"
+  | "payments"
+  | "plans"
+  | "features"
+  | "apis";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user, logoutUser } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(
-    typeof window !== "undefined" && window.innerWidth >= 768
+    typeof window !== "undefined" && window.innerWidth >= 768,
   );
 
   // Check if user is admin

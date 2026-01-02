@@ -18,9 +18,10 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
   isLoading = false,
 }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(
-    null
-  );
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   useEffect(() => {
     const handleSelection = () => {

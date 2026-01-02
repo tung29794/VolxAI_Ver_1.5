@@ -38,7 +38,7 @@ const handleSaveArticle: RequestHandler = async (req, res) => {
     // Check if slug already exists
     const existingArticle = await query<any>(
       "SELECT id FROM articles WHERE slug = ?",
-      [slug]
+      [slug],
     );
 
     if (existingArticle.length > 0) {
@@ -69,7 +69,7 @@ const handleSaveArticle: RequestHandler = async (req, res) => {
         JSON.stringify(keywords),
         featuredImage || null,
         status,
-      ]
+      ],
     );
 
     res.status(201).json({
@@ -86,7 +86,8 @@ const handleGetArticles: RequestHandler = async (req, res) => {
   try {
     const { status } = req.query;
 
-    let sql = "SELECT id, title, slug, status, meta_description, created_at FROM articles";
+    let sql =
+      "SELECT id, title, slug, status, meta_description, created_at FROM articles";
     const params: any[] = [];
 
     if (status) {
@@ -109,10 +110,9 @@ const handleGetArticle: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const articles = await query<any>(
-      "SELECT * FROM articles WHERE id = ?",
-      [id]
-    );
+    const articles = await query<any>("SELECT * FROM articles WHERE id = ?", [
+      id,
+    ]);
 
     if (articles.length === 0) {
       res.status(404).json({ error: "Article not found" });
@@ -133,10 +133,7 @@ const handleDeleteArticle: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await execute(
-      "DELETE FROM articles WHERE id = ?",
-      [id]
-    );
+    const result = await execute("DELETE FROM articles WHERE id = ?", [id]);
 
     if ((result as any).affectedRows === 0) {
       res.status(404).json({ error: "Article not found" });

@@ -24,7 +24,9 @@ interface Article {
 export default function AdminArticles() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"all" | "draft" | "published">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "draft" | "published">(
+    "all",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -75,7 +77,7 @@ export default function AdminArticles() {
   };
 
   const filteredArticles = articles.filter((article) =>
-    article.title.toLowerCase().includes(searchQuery.toLowerCase())
+    article.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const formatDate = (dateString: string) => {
@@ -131,12 +133,8 @@ export default function AdminArticles() {
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              {tab === "all"
-                ? "Tất cả"
-                : tab === "draft"
-                  ? "Nháp"
-                  : "Đã đăng"}
-              ({articles.length})
+              {tab === "all" ? "Tất cả" : tab === "draft" ? "Nháp" : "Đã đăng"}(
+              {articles.length})
             </button>
           ))}
         </div>
@@ -151,9 +149,7 @@ export default function AdminArticles() {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <p className="text-gray-500 mb-4">Không có bài viết nào</p>
               <Button
-                onClick={() =>
-                  (window.location.href = "/admin/articles/new")
-                }
+                onClick={() => (window.location.href = "/admin/articles/new")}
               >
                 Tạo bài viết đầu tiên
               </Button>
@@ -162,7 +158,10 @@ export default function AdminArticles() {
         ) : (
           <div className="space-y-4">
             {filteredArticles.map((article) => (
-              <Card key={article.id} className="hover:shadow-md transition-shadow">
+              <Card
+                key={article.id}
+                className="hover:shadow-md transition-shadow"
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -177,9 +176,7 @@ export default function AdminArticles() {
                               : "bg-yellow-100 text-yellow-800"
                           }`}
                         >
-                          {article.status === "published"
-                            ? "Đã đăng"
-                            : "Nháp"}
+                          {article.status === "published" ? "Đã đăng" : "Nháp"}
                         </span>
                       </div>
                       <p className="text-gray-600 text-sm mb-2">
@@ -187,13 +184,12 @@ export default function AdminArticles() {
                       </p>
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <span>
-                          Slug: <code className="bg-gray-100 px-2 py-1 rounded">
+                          Slug:{" "}
+                          <code className="bg-gray-100 px-2 py-1 rounded">
                             {article.slug}
                           </code>
                         </span>
-                        <span>
-                          Tạo: {formatDate(article.created_at)}
-                        </span>
+                        <span>Tạo: {formatDate(article.created_at)}</span>
                       </div>
                     </div>
                     <div className="flex gap-2 ml-4">
@@ -238,8 +234,9 @@ export default function AdminArticles() {
                           <DialogHeader>
                             <DialogTitle>Xóa bài viết</DialogTitle>
                             <DialogDescription>
-                              Bạn có chắc chắn muốn xóa bài viết "{article.title}"?
-                              Hành động này không thể hoàn tác.
+                              Bạn có chắc chắn muốn xóa bài viết "
+                              {article.title}"? Hành động này không thể hoàn
+                              tác.
                             </DialogDescription>
                           </DialogHeader>
                           <DialogFooter>

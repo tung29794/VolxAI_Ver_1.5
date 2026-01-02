@@ -24,7 +24,14 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, XCircle, X, Zap, Loader2, Image as ImageIcon } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  X,
+  Zap,
+  Loader2,
+  Image as ImageIcon,
+} from "lucide-react";
 import { SelectionToolbar } from "@/components/SelectionToolbar";
 import { buildApiUrl } from "@/lib/api";
 import { toast } from "sonner";
@@ -217,10 +224,7 @@ export default function ArticleEditor() {
 
     if (selection) {
       // Handle YouTube URLs
-      if (
-        videoUrl.includes("youtube.com") ||
-        videoUrl.includes("youtu.be")
-      ) {
+      if (videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be")) {
         let videoId = "";
 
         // Extract video ID from different YouTube URL formats
@@ -232,11 +236,7 @@ export default function ArticleEditor() {
 
         if (videoId) {
           const embedUrl = `https://www.youtube.com/embed/${videoId}`;
-          editor.insertEmbed(
-            selection.index,
-            "video",
-            embedUrl
-          );
+          editor.insertEmbed(selection.index, "video", embedUrl);
           editor.setSelection(selection.index + 1);
           return;
         }
@@ -417,7 +417,7 @@ export default function ArticleEditor() {
     } catch (error) {
       console.error("Error saving article:", error);
       alert(
-        `Lỗi: ${error instanceof Error ? error.message : "Không thể lưu bài viết"}`
+        `Lỗi: ${error instanceof Error ? error.message : "Không thể lưu bài viết"}`,
       );
     } finally {
       setIsPublishing(false);
@@ -450,41 +450,38 @@ export default function ArticleEditor() {
   };
   const wordCountContent = useMemo(
     () =>
-      content.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length,
-    [content]
+      content
+        .replace(/<[^>]*>/g, " ")
+        .split(/\s+/)
+        .filter(Boolean).length,
+    [content],
   );
   const keywordOccurrences = useMemo(() => {
     const plain = normalize(content.replace(/<[^>]*>/g, " "));
     const totals = keywords.map((k) => {
       const nk = normalize(k);
       if (!nk) return 0;
-      const regex = new RegExp(
-        nk.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
+      const regex = new RegExp(nk.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
       return (plain.match(regex) || []).length;
     });
     return totals.reduce((a, b) => a + b, 0);
   }, [content, keywords]);
   const density = useMemo(() => {
     if (wordCountContent === 0) return 0;
-    return +(
-      (keywordOccurrences / wordCountContent) *
-      100
-    ).toFixed(2);
+    return +((keywordOccurrences / wordCountContent) * 100).toFixed(2);
   }, [keywordOccurrences, wordCountContent]);
 
   const hasExternalLink = useMemo(
     () => /<a[^>]+href="http(s)?:\/\//i.test(content),
-    [content]
+    [content],
   );
   const hasInternalLink = useMemo(
     () => /<a[^>]+href="\//i.test(content),
-    [content]
+    [content],
   );
   const hasImageWithAlt = useMemo(
     () => /<img[^>]*alt=\"[^\"]+\"/i.test(content),
-    [content]
+    [content],
   );
   const hasH2H3 = useMemo(() => /<h2>|<h3>/i.test(content), [content]);
 
@@ -492,11 +489,11 @@ export default function ArticleEditor() {
 
   const titleHasKeyword = containsAny(
     metaTitle || title,
-    focusKeywords.length ? focusKeywords : keywords
+    focusKeywords.length ? focusKeywords : keywords,
   );
   const descHasKeyword = containsAny(
     metaDescription,
-    focusKeywords.length ? focusKeywords : keywords
+    focusKeywords.length ? focusKeywords : keywords,
   );
   const urlHasKeyword = useMemo(() => {
     const s = slugify(slug || "");
@@ -516,7 +513,7 @@ export default function ArticleEditor() {
   }, [slug, keywords, focusKeywords]);
   const contentHasKeyword = containsAny(
     content.replace(/<[^>]*>/g, " "),
-    focusKeywords.length ? focusKeywords : keywords
+    focusKeywords.length ? focusKeywords : keywords,
   );
   // Check if the FIRST NON-EMPTY PARAGRAPH contains the focus keyword anywhere
   const firstParagraphHasKeyword = useMemo(() => {
@@ -533,7 +530,7 @@ export default function ArticleEditor() {
       if (paraText) {
         return containsAny(
           paraText,
-          focusKeywords.length ? focusKeywords : keywords
+          focusKeywords.length ? focusKeywords : keywords,
         );
       }
     }
@@ -545,19 +542,22 @@ export default function ArticleEditor() {
       .join(" ");
     return containsAny(
       firstChunk,
-      focusKeywords.length ? focusKeywords : keywords
+      focusKeywords.length ? focusKeywords : keywords,
     );
   }, [content, keywords, focusKeywords]);
 
   const titleContainsKeyword = containsAny(
     metaTitle || title,
-    focusKeywords.length ? focusKeywords : keywords
+    focusKeywords.length ? focusKeywords : keywords,
   );
   const titleHasNumber = /(\d+)/.test(metaTitle || title);
 
   const seoChecks = {
     basic: [
-      { text: "Không thấy từ khóa chính trên SEO title", checked: titleHasKeyword },
+      {
+        text: "Không thấy từ khóa chính trên SEO title",
+        checked: titleHasKeyword,
+      },
       {
         text: "Không thấy từ khóa chính trong SEO Description",
         checked: descHasKeyword,
@@ -583,8 +583,7 @@ export default function ArticleEditor() {
       {
         text: "Có từ khóa trong H2/H3",
         checked:
-          hasH2H3 &&
-          containsAny(content.replace(/<[^>]*>/g, " "), keywords),
+          hasH2H3 && containsAny(content.replace(/<[^>]*>/g, " "), keywords),
       },
       { text: "Có thẻ IMG với alt", checked: hasImageWithAlt },
       {
@@ -594,8 +593,7 @@ export default function ArticleEditor() {
       {
         text: "URL ngắn gọn (< 75 ký tự)",
         checked:
-          (slug || "").length > 0 &&
-          (slug || "").length <= MAX_SLUG_LENGTH,
+          (slug || "").length > 0 && (slug || "").length <= MAX_SLUG_LENGTH,
       },
       {
         text: "Có ít nhất một link ngoài (DoFollow)",
@@ -697,43 +695,33 @@ export default function ArticleEditor() {
                     "paragraph-btn": () => {
                       if (quillRef.current) {
                         const editor = quillRef.current.getEditor();
-                        editor.formatLine(
-                          editor.getSelection().index,
-                          1,
-                          {
-                            header: false,
-                          }
-                        );
+                        editor.formatLine(editor.getSelection().index, 1, {
+                          header: false,
+                        });
                       }
                     },
                     "h1-btn": () => {
                       if (quillRef.current) {
                         const editor = quillRef.current.getEditor();
-                        editor.formatLine(
-                          editor.getSelection().index,
-                          1,
-                          { header: 1 }
-                        );
+                        editor.formatLine(editor.getSelection().index, 1, {
+                          header: 1,
+                        });
                       }
                     },
                     "h2-btn": () => {
                       if (quillRef.current) {
                         const editor = quillRef.current.getEditor();
-                        editor.formatLine(
-                          editor.getSelection().index,
-                          1,
-                          { header: 2 }
-                        );
+                        editor.formatLine(editor.getSelection().index, 1, {
+                          header: 2,
+                        });
                       }
                     },
                     "h3-btn": () => {
                       if (quillRef.current) {
                         const editor = quillRef.current.getEditor();
-                        editor.formatLine(
-                          editor.getSelection().index,
-                          1,
-                          { header: 3 }
-                        );
+                        editor.formatLine(editor.getSelection().index, 1, {
+                          header: 3,
+                        });
                       }
                     },
                     "video-btn": handleInsertVideo,
@@ -932,9 +920,7 @@ export default function ArticleEditor() {
                               <Input
                                 id="meta-title"
                                 value={metaTitle}
-                                onChange={(e) =>
-                                  setMetaTitle(e.target.value)
-                                }
+                                onChange={(e) => setMetaTitle(e.target.value)}
                                 maxLength={MAX_META_TITLE_LENGTH}
                               />
                             </div>
@@ -971,8 +957,7 @@ export default function ArticleEditor() {
                                     size="sm"
                                     className="p-0 h-auto text-blue-600 font-semibold"
                                   >
-                                    AI Rewrite{" "}
-                                    <Zap className="w-3 h-3 ml-1" />
+                                    AI Rewrite <Zap className="w-3 h-3 ml-1" />
                                   </Button>
                                 </div>
                                 <span className="text-sm text-muted-foreground">
@@ -1033,8 +1018,7 @@ export default function ArticleEditor() {
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
-                                    const reader =
-                                      new FileReader();
+                                    const reader = new FileReader();
                                     reader.onload = (event) => {
                                       const result = event.target
                                         ?.result as string;
@@ -1127,11 +1111,7 @@ export default function ArticleEditor() {
                   <AccordionItem value="basic">
                     <AccordionTrigger>
                       SEO Cơ bản (
-                      {
-                        seoChecks.basic.filter((c) => !c.checked)
-                          .length
-                      }{" "}
-                      Errors)
+                      {seoChecks.basic.filter((c) => !c.checked).length} Errors)
                     </AccordionTrigger>
                     <AccordionContent>
                       <ul className="space-y-2">
@@ -1148,10 +1128,7 @@ export default function ArticleEditor() {
                   <AccordionItem value="advanced">
                     <AccordionTrigger>
                       Nâng cao (
-                      {
-                        seoChecks.advanced.filter((c) => !c.checked)
-                          .length
-                      }{" "}
+                      {seoChecks.advanced.filter((c) => !c.checked).length}{" "}
                       Errors)
                     </AccordionTrigger>
                     <AccordionContent>
@@ -1169,11 +1146,7 @@ export default function ArticleEditor() {
                   <AccordionItem value="title">
                     <AccordionTrigger>
                       Tiêu đề thu hút (
-                      {
-                        seoChecks.title.filter((c) => !c.checked)
-                          .length
-                      }{" "}
-                      Errors)
+                      {seoChecks.title.filter((c) => !c.checked).length} Errors)
                     </AccordionTrigger>
                     <AccordionContent>
                       <ul className="space-y-2">
@@ -1213,7 +1186,7 @@ export default function ArticleEditor() {
                             editor.insertEmbed(
                               cursorPosition,
                               "image",
-                              image.original || image.thumbnail
+                              image.original || image.thumbnail,
                             );
                             // Move cursor to right of the image
                             editor.setSelection(cursorPosition + 1);
@@ -1276,10 +1249,7 @@ export default function ArticleEditor() {
                   <CardTitle className="text-base">Video</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <Button
-                    className="w-full"
-                    onClick={handleInsertVideo}
-                  >
+                  <Button className="w-full" onClick={handleInsertVideo}>
                     Insert Video
                   </Button>
                   <p className="text-xs text-gray-500 mt-3">

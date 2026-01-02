@@ -132,34 +132,65 @@ const tones = [
 
 const aiOutlineCategories = {
   "Dàn ý theo mục tiêu": [
-    { value: "seo-basic", label: "SEO Basic: Tập trung vào từ khóa - Tốt nhất khi từ khóa là dạng câu hỏi 🔥" },
-    { value: "seo-focus", label: "SEO Focus: Tối ưu SEO, có gắng đặt xếp hang SERP cao" },
-    { value: "seo-extend", label: "SEO Extend: Giải thích từ khóa + Viết thêm ý dụ, so sánh 🔥" },
-    { value: "seo-long", label: "SEO Long Form: Viết dài nhất có thể - Giải thích từ khóa, mở rộng nội dung tối đa 🔥" },
-    { value: "seo-nofaq", label: "SEO NoFAQ: Tối ưu SEO, có gắng xếp hạng cao trên SERP, không có FAQ cuối bài" },
+    {
+      value: "seo-basic",
+      label:
+        "SEO Basic: Tập trung vào từ khóa - Tốt nhất khi từ khóa là dạng câu hỏi 🔥",
+    },
+    {
+      value: "seo-focus",
+      label: "SEO Focus: Tối ưu SEO, có gắng đặt xếp hang SERP cao",
+    },
+    {
+      value: "seo-extend",
+      label: "SEO Extend: Giải thích từ khóa + Viết thêm ý dụ, so sánh 🔥",
+    },
+    {
+      value: "seo-long",
+      label:
+        "SEO Long Form: Viết dài nhất có thể - Giải thích từ khóa, mở rộng nội dung tối đa 🔥",
+    },
+    {
+      value: "seo-nofaq",
+      label:
+        "SEO NoFAQ: Tối ưu SEO, có gắng xếp hạng cao trên SERP, không có FAQ cuối bài",
+    },
   ],
   "Dàn ý cơ bản": [
-    { value: "basic-9-10h2", label: "Dàn ý với 9-10 [h2] - Bài viết sẽ dài khoảng 2,500 - 3,500 từ" },
-    { value: "basic-7-8h2", label: "Dàn ý với 7-8 [h2] - Bài viết sẽ dài khoảng 2,100 - 2,500 từ" },
-    { value: "basic-5-6h2", label: "Dàn ý với 5-6 [h2] - Bài viết sẽ dài khoảng 1,500 - 2,000 từ" },
-    { value: "basic-3-4h2", label: "Dàn ý với 3-4 [h2] - Bài viết sẽ dài khoảng 1,000 - 1,500 từ" },
-    { value: "basic-2-3h2", label: "Dàn ý với 2-3 [h2] - Bài viết sẽ dài khoảng ~ 1,000 từ" },
+    {
+      value: "basic-9-10h2",
+      label: "Dàn ý với 9-10 [h2] - Bài viết sẽ dài khoảng 2,500 - 3,500 từ",
+    },
+    {
+      value: "basic-7-8h2",
+      label: "Dàn ý với 7-8 [h2] - Bài viết sẽ dài khoảng 2,100 - 2,500 từ",
+    },
+    {
+      value: "basic-5-6h2",
+      label: "Dàn ý với 5-6 [h2] - Bài viết sẽ dài khoảng 1,500 - 2,000 từ",
+    },
+    {
+      value: "basic-3-4h2",
+      label: "Dàn ý với 3-4 [h2] - Bài viết sẽ dài khoảng 1,000 - 1,500 từ",
+    },
+    {
+      value: "basic-2-3h2",
+      label: "Dàn ý với 2-3 [h2] - Bài viết sẽ dài khoảng ~ 1,000 từ",
+    },
   ],
 };
 
-const models = [
-  "GPT 4.1 MINI",
-  "GPT 5",
-  "Gemini 2.5 Flash",
-  "GPT 4o MINI",
-];
+const models = ["GPT 4.1 MINI", "GPT 5", "Gemini 2.5 Flash", "GPT 4o MINI"];
 
 interface WriteByKeywordFormProps {
   onSubmit?: (formData: any) => Promise<void>;
   isLoading?: boolean;
 }
 
-export default function WriteByKeywordForm({ onSubmit, isLoading = false }: WriteByKeywordFormProps) {
+export default function WriteByKeywordForm({
+  onSubmit,
+  isLoading = false,
+}: WriteByKeywordFormProps) {
   const [formData, setFormData] = useState({
     keyword: "",
     language: "vi",
@@ -197,7 +228,10 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
       newErrors.keyword = "Vui lòng nhập từ khóa";
     }
 
-    if (formData.outlineType === "your-outline" && !formData.customOutline.trim()) {
+    if (
+      formData.outlineType === "your-outline" &&
+      !formData.customOutline.trim()
+    ) {
       newErrors.customOutline = "Vui lòng nhập dàn ý";
     }
 
@@ -270,13 +304,17 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
               <p className="text-sm text-destructive">{errors.keyword}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Bạn có thể thêm từ khóa phụ dưới định dạng: từ khóa chính, từ khóa phụ 1, từ khóa phụ 2
+              Bạn có thể thêm từ khóa phụ dưới định dạng: từ khóa chính, từ khóa
+              phụ 1, từ khóa phụ 2
             </p>
           </div>
 
           {/* Language Section */}
           <div className="space-y-3">
-            <Label htmlFor="language" className="text-base font-semibold flex items-center gap-2">
+            <Label
+              htmlFor="language"
+              className="text-base font-semibold flex items-center gap-2"
+            >
               <span>🌍</span>
               Ngôn ngữ: Ngôn ngữ của bài viết này
             </Label>
@@ -332,9 +370,16 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
                     onChange={handleChange}
                     className="w-full p-2 border border-border rounded-lg bg-white text-sm focus:outline-none focus:border-primary"
                   >
-                    <option value="short">Short: Ngắn gọn, tập trung vào từ khóa ~1,500 từ</option>
-                    <option value="medium">Medium: Mở rộng và tăng độ sáng tạo của bài ~2,000 từ</option>
-                    <option value="long">Long: Bao quát chủ đề sâu, mở rộng các khía cạnh xung quanh ~3,000 từ</option>
+                    <option value="short">
+                      Short: Ngắn gọn, tập trung vào từ khóa ~1,500 từ
+                    </option>
+                    <option value="medium">
+                      Medium: Mở rộng và tăng độ sáng tạo của bài ~2,000 từ
+                    </option>
+                    <option value="long">
+                      Long: Bao quát chủ đề sâu, mở rộng các khía cạnh xung
+                      quanh ~3,000 từ
+                    </option>
                   </select>
                 </div>
               )}
@@ -370,20 +415,25 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
 [h3] sub heading
 [h2] heading`}
                     className={`w-full p-3 border rounded-lg text-sm resize-none focus:outline-none focus:border-primary ${
-                      errors.customOutline ? "border-destructive" : "border-border"
+                      errors.customOutline
+                        ? "border-destructive"
+                        : "border-border"
                     }`}
                     rows={5}
                     disabled={isLoading}
                   />
                   {errors.customOutline && (
-                    <p className="text-sm text-destructive">{errors.customOutline}</p>
+                    <p className="text-sm text-destructive">
+                      {errors.customOutline}
+                    </p>
                   )}
                   <p className="text-xs text-muted-foreground">
                     Cho phép định dạng dàn ý với format [h2][h3], xem{" "}
                     <span className="text-primary font-semibold cursor-pointer">
                       hướng dẫn sử dụng
                     </span>
-                    . Mỗi [h2] sẽ không quá 400 từ, và mỗi [h3] sẽ không quá 200 từ
+                    . Mỗi [h2] sẽ không quá 400 từ, và mỗi [h3] sẽ không quá 200
+                    từ
                   </p>
                 </div>
               )}
@@ -411,7 +461,10 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
               {formData.outlineType === "ai-outline" && (
                 <div className="ml-7 space-y-3 flex items-end gap-3">
                   <div className="flex-1">
-                    <Label htmlFor="aiOutlineStyle" className="text-sm mb-2 block">
+                    <Label
+                      htmlFor="aiOutlineStyle"
+                      className="text-sm mb-2 block"
+                    >
                       Chọn phong cách dàn ý
                     </Label>
                     <select
@@ -422,15 +475,17 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
                       className="w-full p-2 border border-border rounded-lg bg-white text-sm focus:outline-none focus:border-primary"
                     >
                       <option value="">-- Chọn phong cách --</option>
-                      {Object.entries(aiOutlineCategories).map(([category, options]) => (
-                        <optgroup key={category} label={category}>
-                          {options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
+                      {Object.entries(aiOutlineCategories).map(
+                        ([category, options]) => (
+                          <optgroup key={category} label={category}>
+                            {options.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ),
+                      )}
                     </select>
                   </div>
                   <Button
@@ -451,7 +506,9 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
               <Label htmlFor="tone" className="text-base font-semibold">
                 Giọng điệu:
               </Label>
-              <span className="text-xs text-muted-foreground">Phong cách của bài viết này</span>
+              <span className="text-xs text-muted-foreground">
+                Phong cách của bài viết này
+              </span>
             </div>
             <select
               id="tone"
@@ -513,7 +570,10 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
               <div className="mt-6 space-y-6 p-6 bg-gray-50 rounded-lg">
                 {/* Primary Keywords */}
                 <div className="space-y-3">
-                  <Label htmlFor="primaryKeywords" className="text-sm font-semibold">
+                  <Label
+                    htmlFor="primaryKeywords"
+                    className="text-sm font-semibold"
+                  >
                     Các từ chọn sau là từ chính, bạn có thể thêm hoặc để trống
                   </Label>
                   <Input
@@ -526,7 +586,10 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
 
                 {/* Internal Links */}
                 <div className="space-y-3">
-                  <Label htmlFor="internalLink" className="text-sm font-semibold">
+                  <Label
+                    htmlFor="internalLink"
+                    className="text-sm font-semibold"
+                  >
                     Gắn link sau vào từ khóa chính
                   </Label>
                   <Input
@@ -539,7 +602,10 @@ export default function WriteByKeywordForm({ onSubmit, isLoading = false }: Writ
 
                 {/* Additional Content */}
                 <div className="space-y-3">
-                  <Label htmlFor="additionalContent" className="text-sm font-semibold">
+                  <Label
+                    htmlFor="additionalContent"
+                    className="text-sm font-semibold"
+                  >
                     Thêm link nếu nội dung có các từ khóa
                   </Label>
                   <textarea
@@ -565,28 +631,52 @@ Keyword_3|Link_3`}
                         <option>Heading 2</option>
                         <option>Heading 3</option>
                       </select>
-                      <button type="button" className="p-1 hover:bg-gray-200 rounded">
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
                         💧
                       </button>
-                      <button type="button" className="p-1 hover:bg-gray-200 rounded">
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
                         <strong>B</strong>
                       </button>
-                      <button type="button" className="p-1 hover:bg-gray-200 rounded">
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
                         <em>I</em>
                       </button>
-                      <button type="button" className="p-1 hover:bg-gray-200 rounded">
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
                         <u>U</u>
                       </button>
-                      <button type="button" className="p-1 hover:bg-gray-200 rounded">
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
                         ≡
                       </button>
-                      <button type="button" className="p-1 hover:bg-gray-200 rounded">
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
                         ≣
                       </button>
-                      <button type="button" className="p-1 hover:bg-gray-200 rounded">
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
                         ⋮
                       </button>
-                      <button type="button" className="p-1 hover:bg-gray-200 rounded">
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
                         🔗
                       </button>
                     </div>
@@ -620,7 +710,6 @@ Keyword_3|Link_3`}
               </div>
             )}
           </div>
-
         </div>
 
         {/* Action Buttons */}
