@@ -230,7 +230,7 @@ export default function WriteByKeywordForm() {
               rows={3}
             />
             <p className="text-xs text-muted-foreground">
-              Bạn có thể thêm từ khóa phụ dưới dạng dàn ý: từ khóa chính, từ khóa phụ 1, từ khóa phụ 2
+              Bạn có thể thêm từ khóa phụ dưới định dạng: từ khóa chính, từ khóa phụ 1, từ khóa phụ 2
             </p>
           </div>
 
