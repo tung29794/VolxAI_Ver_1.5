@@ -154,7 +154,12 @@ const models = [
   "GPT 4o MINI",
 ];
 
-export default function WriteByKeywordForm() {
+interface WriteByKeywordFormProps {
+  onSubmit?: (formData: any) => Promise<void>;
+  isLoading?: boolean;
+}
+
+export default function WriteByKeywordForm({ onSubmit, isLoading = false }: WriteByKeywordFormProps) {
   const [formData, setFormData] = useState({
     keyword: "",
     language: "vi",
@@ -167,6 +172,7 @@ export default function WriteByKeywordForm() {
   });
 
   const [showSEOOptions, setShowSEOOptions] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -175,16 +181,44 @@ export default function WriteByKeywordForm() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleGenerateOutline = () => {
     alert("AI Tạo Dàn Ý - Tính năng sẽ được cập nhật");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.keyword.trim()) {
+      newErrors.keyword = "Vui lòng nhập từ khóa";
+    }
+
+    if (formData.outlineType === "your-outline" && !formData.customOutline.trim()) {
+      newErrors.customOutline = "Vui lòng nhập dàn ý";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form data:", formData);
-    alert("Bắt đầu viết bài - Tính năng sẽ được cập nhật");
+
+    if (!validateForm()) {
+      return;
+    }
+
+    if (onSubmit) {
+      try {
+        await onSubmit(formData);
+      } catch (error) {
+        console.error("Error submitting form:", error);
+      }
+    }
   };
 
   return (
