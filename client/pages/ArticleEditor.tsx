@@ -84,6 +84,66 @@ export default function ArticleEditor() {
     }
   };
 
+  const handleOpenRewriteModal = () => {
+    // Get selected text from Quill editor
+    if (quillRef.current) {
+      const editor = quillRef.current.getEditor();
+      const selection = editor.getSelection();
+
+      if (selection && selection.length > 0) {
+        const text = editor.getText(selection.index, selection.length).trim();
+        if (text) {
+          setSelectedText(text);
+          setIsRewriteModalOpen(true);
+        }
+      }
+    }
+  };
+
+  const handleRewriteText = async (style: RewriteStyle) => {
+    if (!selectedText || !quillRef.current) return;
+
+    setIsRewriting(true);
+    try {
+      const response = await fetch("/api/ai/rewrite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: selectedText,
+          style,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to rewrite text");
+      }
+
+      const data = await response.json();
+      const rewrittenText = data.rewrittenText;
+
+      // Replace selected text with rewritten text
+      const editor = quillRef.current.getEditor();
+      const selection = editor.getSelection();
+
+      if (selection) {
+        editor.deleteText(selection.index, selection.length);
+        editor.insertText(selection.index, rewrittenText);
+        // Move cursor after the inserted text
+        editor.setSelection(selection.index + rewrittenText.length);
+      }
+
+      setIsRewriteModalOpen(false);
+      setSelectedText("");
+    } catch (error) {
+      console.error("Error rewriting text:", error);
+      alert("Failed to rewrite text. Please try again.");
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
   const removeKeyword = (keywordToRemove) => {
     setKeywords(keywords.filter(keyword => keyword !== keywordToRemove));
   };
