@@ -41,6 +41,7 @@ const SeoChecklistItem = ({ text, checked }) => (
 );
 
 export default function ArticleEditor() {
+  const { id } = useParams<{ id: string }>();
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -51,6 +52,46 @@ export default function ArticleEditor() {
   const [slug, setSlug] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [featuredImage, setFeaturedImage] = useState("");
+  const [isLoading, setIsLoading] = useState(!!id);
+
+  // Load article data if ID is provided
+  useEffect(() => {
+    if (!id) return;
+
+    const loadArticle = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        const response = await fetch(buildApiUrl(`/api/articles/${id}`), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          toast.error("Không thể tải bài viết");
+          return;
+        }
+
+        const data = await response.json();
+        const article = data.article;
+
+        setTitle(article.title || "");
+        setContent(article.content || "");
+        setMetaTitle(article.meta_title || "");
+        setMetaDescription(article.meta_description || "");
+        setSlug(article.slug || "");
+        setFeaturedImage(article.featured_image || "");
+        setKeywords(article.keywords || []);
+      } catch (error) {
+        console.error("Error loading article:", error);
+        toast.error("Có lỗi xảy ra khi tải bài viết");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadArticle();
+  }, [id]);
   const [isSerpModalOpen, setIsSerpModalOpen] = useState(false);
   const [accordionValue, setAccordionValue] = useState("basic");
   const [isPublishing, setIsPublishing] = useState(false);
