@@ -53,6 +53,9 @@ export async function createServer() {
   // AI routes
   app.use("/api/ai", aiRouter);
 
+  // Articles routes
+  app.use("/api/articles", articlesRouter);
+
   // Demo route
   app.get("/api/demo", handleDemo);
 
