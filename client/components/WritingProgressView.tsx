@@ -18,30 +18,64 @@ export default function WritingProgressView({
   const [content, setContent] = useState("");
   const [isGenerating, setIsGenerating] = useState(true);
   const [isComplete, setIsComplete] = useState(false);
+  const [articleData, setArticleData] = useState<any>(null);
 
-  // Simulated article content - in production, this would come from the API
-  const simulatedArticle = `Ngoài Thất Mitsubishi Destinatior: Đánh Giá Chi Tiết Thiết Kế Độc Phá
-
-Ngoài Thất Mitsubishi Destinatior: Thiết Kế Có Gì Nổi Bật? Trong phần khúc xe SUV có trung, Mitsubishi Destinatior đã tạo nên nhiều ấn tượng mạnh mẽ không chỉ về khả năng vận hành tốt mà còn bởi phần ngoài thất mang đầy phong cách đột phá, hiện đại. Với kiểu dáng thế Mitsubishi Destinatior đã dùng chính phục định hình của chủ số hữu.
-
-Trong bài viết này, chúng ta sẽ đi sâu phân tích và ngoài thất của Mitsubishi Destinatior qua từng phần, từ thiết kế đầu xe, thân xe đến đuôi xe, cũng những yếu tố khác như vật liệu, mẫu sắc, tính khí động học và góp phần không những hành toàn diện, chân thực về ngoài thất của Mitsubishi Destinatior.
-
-Hãy cùng khám phá những điểm nổi bật của thiết kế Mitsubishi Destinatior, liệu nó có thất sự làm hài lòng những khách hàng đối hỏi cao nhất về ngoài hình hay không?
-
-Tổng Quan Về Ngoài Thát Mitsubishi Destinatior: Thiết Kế Độc Phá
-
-Mitsubishi Destinatior mang trong mình phong cách thiết kế hiện đại, trung thực, pha trộn giữa sự theo và sang trong. Đầu và nội bất với cấu hình iVoxuan nới thế thế theo và sơng trong. Đây là nơi dùng đánh riêng cho những ai yêu thích sự độc mới trong thiết kế xe ô tô và mong muốn có cái nhìn toàn diện, chân thực về ngoài thất của Mitsubishi Destinatior.`;
-
-  // Typing effect simulation
+  // Generate article via API
   useEffect(() => {
-    if (!isGenerating) return;
+    const generateArticle = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          toast.error("Vui lòng đăng nhập lại");
+          setIsGenerating(false);
+          return;
+        }
 
+        const response = await fetch(buildApiUrl("/api/ai/generate-article"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            keyword: formData.keyword,
+            language: formData.language,
+            outlineType: formData.outlineType,
+            tone: formData.tone,
+            model: formData.model,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          toast.error(error.error || "Có lỗi xảy ra khi tạo bài viết");
+          setIsGenerating(false);
+          return;
+        }
+
+        const data = await response.json();
+        setArticleData(data);
+
+        // Simulate typing effect with the generated content
+        const generatedContent = data.content || "";
+        startTypingEffect(generatedContent);
+      } catch (error) {
+        console.error("Error generating article:", error);
+        toast.error("Có lỗi xảy ra khi tạo bài viết");
+        setIsGenerating(false);
+      }
+    };
+
+    generateArticle();
+  }, []);
+
+  const startTypingEffect = (fullContent: string) => {
     let currentIndex = 0;
-    const typingSpeed = 10; // milliseconds per character
+    const typingSpeed = 5; // milliseconds per character for faster effect
 
     const typingInterval = setInterval(() => {
-      if (currentIndex < simulatedArticle.length) {
-        setContent(simulatedArticle.substring(0, currentIndex + 1));
+      if (currentIndex < fullContent.length) {
+        setContent(fullContent.substring(0, currentIndex + 1));
         currentIndex++;
       } else {
         clearInterval(typingInterval);
@@ -51,7 +85,7 @@ Mitsubishi Destinatior mang trong mình phong cách thiết kế hiện đại, 
     }, typingSpeed);
 
     return () => clearInterval(typingInterval);
-  }, [isGenerating]);
+  };
 
   const handleContinueEditing = async () => {
     try {
