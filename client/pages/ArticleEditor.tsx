@@ -293,6 +293,11 @@ export default function ArticleEditor() {
       setFloatingToolbarVisible(false);
       setSelectedText("");
     }
+
+    // Track cursor position even when no selection
+    if (selection) {
+      setCursorPosition(selection.index);
+    }
   };
 
   const removeKeyword = (keywordToRemove) => {
