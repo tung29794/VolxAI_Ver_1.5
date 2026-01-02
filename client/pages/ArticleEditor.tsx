@@ -295,19 +295,26 @@ export default function ArticleEditor() {
           />
           <div className="rounded-md bg-muted/40">
             <ReactQuill
+              ref={quillRef}
               theme="snow"
               value={content}
               onChange={setContent}
               className="h-full rounded-md shadow-sm"
               style={{ height: "calc(100vh - 240px)" }}
               modules={{
-                toolbar: [
-                  [{ header: [1, 2, 3, false] }],
-                  ["bold", "italic", "underline", "strike", "blockquote"],
-                  [{ list: "ordered" }, { list: "bullet" }],
-                  ["link", "image"],
-                  ["clean"],
-                ],
+                toolbar: {
+                  container: [
+                    [{ header: [1, 2, 3, false] }],
+                    ["bold", "italic", "underline", "strike", "blockquote"],
+                    [{ list: "ordered" }, { list: "bullet" }],
+                    ["link", "image"],
+                    ["ai-rewrite"],
+                    ["clean"],
+                  ],
+                  handlers: {
+                    "ai-rewrite": handleOpenRewriteModal,
+                  },
+                },
               }}
             />
             {/* Center only the typing area like a paper */}
