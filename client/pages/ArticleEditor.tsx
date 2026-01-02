@@ -535,6 +535,60 @@ export default function ArticleEditor() {
           </Accordion>
         </div>
       </div>
+
+      {/* AI Rewrite Modal */}
+      <Dialog open={isRewriteModalOpen} onOpenChange={setIsRewriteModalOpen}>
+        <DialogOverlay className="bg-black/30" />
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <Zap className="w-5 h-5 text-blue-600" />
+              AI Rewrite
+            </DialogTitle>
+            <DialogDescription>
+              Select how you'd like to rewrite the selected text
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-4 p-3 bg-muted/40 rounded-lg max-h-24 overflow-y-auto">
+            <p className="text-sm text-muted-foreground">
+              <strong>Selected text:</strong> {selectedText}
+            </p>
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {rewriteOptions.map((option) => (
+              <Button
+                key={option.style}
+                variant="outline"
+                className="w-full justify-start text-left"
+                onClick={() => handleRewriteText(option.style)}
+                disabled={isRewriting}
+              >
+                {isRewriting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {option.label}
+                  </>
+                ) : (
+                  <>{option.label}</>
+                )}
+              </Button>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsRewriteModalOpen(false)}
+              disabled={isRewriting}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
