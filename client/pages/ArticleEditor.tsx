@@ -47,8 +47,10 @@ export default function ArticleEditor() {
   const [metaTitle, setMetaTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+  const [featuredImage, setFeaturedImage] = useState("");
   const [isSerpModalOpen, setIsSerpModalOpen] = useState(false);
   const [accordionValue, setAccordionValue] = useState("basic");
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // AI Rewrite states
   const [isRewriteModalOpen, setIsRewriteModalOpen] = useState(false);
