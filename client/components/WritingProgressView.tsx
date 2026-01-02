@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { buildApiUrl } from "@/lib/api";
+import { toast } from "sonner";
 
 interface WritingProgressViewProps {
   formData: any;
