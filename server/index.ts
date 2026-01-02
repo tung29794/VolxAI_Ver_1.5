@@ -5,6 +5,7 @@ import { handleDemo } from "./routes/demo";
 import { authRouter } from "./routes/auth";
 import { adminRouter } from "./routes/admin";
 import { featuresRouter } from "./routes/features";
+import { aiRouter } from "./routes/ai";
 import { testDatabaseConnection } from "./db";
 
 export async function createServer() {
@@ -47,6 +48,9 @@ export async function createServer() {
 
   // Features routes
   app.use("/api/admin/features", featuresRouter);
+
+  // AI routes
+  app.use("/api/ai", aiRouter);
 
   // Demo route
   app.get("/api/demo", handleDemo);
