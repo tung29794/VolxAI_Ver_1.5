@@ -92,11 +92,9 @@ export default function WriteByKeywordForm() {
     aiOutlineStyle: "SEO Basic",
     tone: "SEO Basic: Tập trung vào từ khóa - Tốt nhất khi từ khóa là dạng câu hỏi 🔥",
     model: "GPT 4.1 MINI",
-    website: "",
   });
 
   const [showSEOOptions, setShowSEOOptions] = useState(false);
-  const [selectedWebsite, setSelectedWebsite] = useState<string | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<
