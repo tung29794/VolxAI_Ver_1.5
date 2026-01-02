@@ -174,6 +174,7 @@ export default function AdminDashboard() {
             {activeTab === "payments" && <AdminPayments />}
             {activeTab === "features" && <AdminFeatures />}
             {activeTab === "plans" && <AdminPlans />}
+            {activeTab === "apis" && <AdminAPIs />}
           </div>
         </div>
       </div>
