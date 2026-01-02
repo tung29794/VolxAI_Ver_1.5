@@ -1005,6 +1005,19 @@ export default function ArticleEditor() {
                       <div
                         key={index}
                         className="relative group cursor-pointer rounded-lg overflow-hidden bg-gray-200 aspect-square"
+                        onClick={() => {
+                          if (quillRef.current && cursorPosition !== null) {
+                            const editor = quillRef.current.getEditor();
+                            // Insert image at cursor position
+                            editor.insertEmbed(
+                              cursorPosition,
+                              "image",
+                              image.original || image.thumbnail
+                            );
+                            // Move cursor to right of the image
+                            editor.setSelection(cursorPosition + 1);
+                          }
+                        }}
                       >
                         <img
                           src={image.thumbnail || image.original}
@@ -1012,27 +1025,9 @@ export default function ArticleEditor() {
                           className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              if (quillRef.current && cursorPosition !== null) {
-                                const editor =
-                                  quillRef.current.getEditor();
-                                // Insert image at cursor position
-                                editor.insertEmbed(
-                                  cursorPosition,
-                                  "image",
-                                  image.original || image.thumbnail
-                                );
-                                // Move cursor to right of the image
-                                editor.setSelection(
-                                  cursorPosition + 1
-                                );
-                              }
-                            }}
-                          >
-                            Insert
-                          </Button>
+                          <span className="text-white font-medium text-sm">
+                            Click to Insert
+                          </span>
                         </div>
                       </div>
                     ))}
