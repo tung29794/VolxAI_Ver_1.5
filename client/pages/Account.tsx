@@ -1526,14 +1526,36 @@ export default function Account() {
                     Nộp URL tự động cho Google, Bing...
                   </p>
                 </div>
-                <div className="bg-white rounded-2xl border border-border p-8">
-                  <div className="text-center py-16">
-                    <ZapIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <h2 className="text-2xl font-bold text-foreground mb-2">
-                      Sắp có tính năng này
-                    </h2>
-                    <p className="text-muted-foreground">
-                      Tính năng tự động index sẽ sớm được cải thiện
+
+                {/* Auto-indexing Features Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Index bài viết lên Google */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                        <ZapIcon className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Index bài viết lên Google
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Nộp URL bài viết lên Google để được lập chỉ mục nhanh chóng
+                    </p>
+                  </div>
+
+                  {/* Index bài viết lên Bing */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                        <ZapIcon className="w-6 h-6 text-green-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Index bài viết lên Bing
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Nộp URL bài viết lên Bing để được lập chỉ mục nhanh chóng
                     </p>
                   </div>
                 </div>
