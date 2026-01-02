@@ -1304,17 +1304,54 @@ export default function Account() {
                     Viết hàng loạt
                   </h1>
                   <p className="text-lg text-muted-foreground">
-                    Tạo nhiều bài viết cùng lúc
+                    Tạo nhiều bài viết cùng lúc từ nhiều nguồn khác nhau
                   </p>
                 </div>
-                <div className="bg-white rounded-2xl border border-border p-8">
-                  <div className="text-center py-16">
-                    <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <h2 className="text-2xl font-bold text-foreground mb-2">
-                      Sắp có tính năng này
-                    </h2>
-                    <p className="text-muted-foreground">
-                      Tính năng viết hàng loạt sẽ sớm được cải thiện
+
+                {/* Batch Writing Features Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Viết theo danh sách từ khoá */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết theo danh sách từ khoá
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Tạo bài viết từ danh sách từ khoá, mỗi từ một bài
+                    </p>
+                  </div>
+
+                  {/* Viết theo nguồn */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-green-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết theo nguồn
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Lấy nội dung từ nguồn và tạo bài viết mới từ đó
+                    </p>
+                  </div>
+
+                  {/* Viết theo dàn ý */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-purple-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết theo dàn ý
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Tạo nhiều bài viết từ nhiều dàn ý khác nhau
                     </p>
                   </div>
                 </div>
