@@ -1015,22 +1015,19 @@ export default function ArticleEditor() {
                           <Button
                             size="sm"
                             onClick={() => {
-                              if (quillRef.current) {
+                              if (quillRef.current && cursorPosition !== null) {
                                 const editor =
                                   quillRef.current.getEditor();
-                                const selection =
-                                  editor.getSelection();
-                                if (selection) {
-                                  editor.insertEmbed(
-                                    selection.index,
-                                    "image",
-                                    image.original ||
-                                      image.thumbnail
-                                  );
-                                  editor.setSelection(
-                                    selection.index + 1
-                                  );
-                                }
+                                // Insert image at cursor position
+                                editor.insertEmbed(
+                                  cursorPosition,
+                                  "image",
+                                  image.original || image.thumbnail
+                                );
+                                // Move cursor to right of the image
+                                editor.setSelection(
+                                  cursorPosition + 1
+                                );
                               }
                             }}
                           >
