@@ -375,10 +375,15 @@ export default function WriteByKeywordForm() {
                       onChange={handleChange}
                       className="w-full p-2 border border-border rounded-lg bg-white text-sm focus:outline-none focus:border-primary"
                     >
-                      {aiOutlineOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
+                      <option value="">-- Chọn phong cách --</option>
+                      {Object.entries(aiOutlineCategories).map(([category, options]) => (
+                        <optgroup key={category} label={category}>
+                          {options.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>
