@@ -362,17 +362,8 @@ export default function Account() {
       setIsGenerating(true);
       setGenerationFormData(formData);
 
-      // In production, this would call the API to generate the article
-      // For now, we'll simulate the process
-      // const token = localStorage.getItem("authToken");
-      // const response = await fetch(buildApiUrl("/api/articles/generate"), {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     Authorization: `Bearer ${token}`,
-      //   },
-      //   body: JSON.stringify(formData),
-      // });
+      // Note: The generation happens in real-time on the frontend
+      // The actual API call will be made when the generation is complete
     } catch (error) {
       console.error("Generation failed:", error);
       toast.error("Có lỗi xảy ra khi tạo bài viết");
