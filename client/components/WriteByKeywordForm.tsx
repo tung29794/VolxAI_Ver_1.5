@@ -507,13 +507,6 @@ Keyword_3|Link_3`}
 
         {/* Action Buttons */}
         <div className="flex gap-3 justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            ⚙️ Tuỳ chọn SEO
-          </Button>
           <Button type="submit" className="bg-primary hover:bg-primary/90 flex items-center gap-2">
             ➜ AI Write
           </Button>
