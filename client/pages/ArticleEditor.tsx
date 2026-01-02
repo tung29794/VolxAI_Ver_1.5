@@ -1,4 +1,5 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, XCircle, X, Zap, Loader2, Image as ImageIcon } from "lucide-react";
 import { SelectionToolbar } from "@/components/SelectionToolbar";
+import { buildApiUrl } from "@/lib/api";
+import { toast } from "sonner";
 
 const SeoChecklistItem = ({ text, checked }) => (
   <li className="flex items-center gap-2 text-sm">
