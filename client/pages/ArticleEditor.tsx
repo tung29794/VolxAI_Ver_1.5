@@ -152,6 +152,48 @@ export default function ArticleEditor() {
     }
   };
 
+  const handleInsertVideo = () => {
+    if (!quillRef.current) return;
+
+    const videoUrl = prompt("Nhập URL video YouTube hoặc URL video:");
+    if (!videoUrl) return;
+
+    const editor = quillRef.current.getEditor();
+    const selection = editor.getSelection();
+
+    if (selection) {
+      // Handle YouTube URLs
+      if (
+        videoUrl.includes("youtube.com") ||
+        videoUrl.includes("youtu.be")
+      ) {
+        let videoId = "";
+
+        // Extract video ID from different YouTube URL formats
+        if (videoUrl.includes("youtube.com/watch?v=")) {
+          videoId = videoUrl.split("v=")[1].split("&")[0];
+        } else if (videoUrl.includes("youtu.be/")) {
+          videoId = videoUrl.split("youtu.be/")[1].split("?")[0];
+        }
+
+        if (videoId) {
+          const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+          editor.insertEmbed(
+            selection.index,
+            "video",
+            embedUrl
+          );
+          editor.setSelection(selection.index + 1);
+          return;
+        }
+      }
+
+      // For regular video URLs (mp4, webm, etc.)
+      editor.insertEmbed(selection.index, "video", videoUrl);
+      editor.setSelection(selection.index + 1);
+    }
+  };
+
   const removeKeyword = (keywordToRemove) => {
     setKeywords(keywords.filter((keyword) => keyword !== keywordToRemove));
   };
