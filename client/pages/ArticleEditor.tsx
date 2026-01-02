@@ -590,10 +590,34 @@ export default function ArticleEditor() {
           Viết bài mới
         </h1>
         <div>
-          <Button variant="outline" className="mr-2">
-            Lưu nháp
+          <Button
+            variant="outline"
+            className="mr-2"
+            onClick={() => handleSaveArticle("draft")}
+            disabled={isPublishing}
+          >
+            {isPublishing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Đang lưu...
+              </>
+            ) : (
+              "Lưu nháp"
+            )}
           </Button>
-          <Button>Đăng bài</Button>
+          <Button
+            onClick={() => handleSaveArticle("published")}
+            disabled={isPublishing}
+          >
+            {isPublishing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Đang đăng...
+              </>
+            ) : (
+              "Đăng bài"
+            )}
+          </Button>
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 h-[calc(100vh-5rem)]">
