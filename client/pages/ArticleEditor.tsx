@@ -1,0 +1,421 @@
+import { useMemo, useState } from "react";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogOverlay,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { CheckCircle, XCircle, X, Zap } from "lucide-react";
+
+const SeoChecklistItem = ({ text, checked }) => (
+  <li className="flex items-center gap-2 text-sm">
+    {checked ? (
+      <CheckCircle className="w-4 h-4 text-green-500" />
+    ) : (
+      <XCircle className="w-4 h-4 text-red-500" />
+    )}
+    <span>{text}</span>
+  </li>
+);
+
+export default function ArticleEditor() {
+  const [content, setContent] = useState("");
+  const [title, setTitle] = useState("");
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [keywordInput, setKeywordInput] = useState("");
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+
+  const [metaTitle, setMetaTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [isSerpModalOpen, setIsSerpModalOpen] = useState(false);
+  const [accordionValue, setAccordionValue] = useState("basic");
+
+  const MAX_META_TITLE_LENGTH = 60;
+  const MAX_SLUG_LENGTH = 75;
+  const MAX_META_DESC_LENGTH = 160;
+
+
+  const handleKeywordKeyDown = (event) => {
+    if (event.key === 'Enter' && keywordInput.trim() !== '') {
+      event.preventDefault();
+      if (!keywords.includes(keywordInput.trim())) {
+        setKeywords([...keywords, keywordInput.trim()]);
+      }
+      setKeywordInput('');
+    }
+  };
+
+  const removeKeyword = (keywordToRemove) => {
+    setKeywords(keywords.filter(keyword => keyword !== keywordToRemove));
+  };
+
+  // Helpers
+  const normalize = (s: string) => s.toLowerCase().trim();
+  const slugify = (s: string) => normalize(s)
+    .normalize('NFD')
+    // remove accents/diacritics
+    .replace(/[\u0300-\u036f]/g, '')
+    // Vietnamese specific
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    // sanitize
+    .replace(/[\/]+/g, '-')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const containsAny = (text: string, kws: string[]) => {
+    const t = normalize(text);
+    return kws.some(k => t.includes(normalize(k)));
+  };
+  const startsWithAny = (text: string, kws: string[]) => {
+    const t = normalize(text);
+    return kws.some(k => t.startsWith(normalize(k)));
+  };
+  const wordCountContent = useMemo(() => content.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length, [content]);
+  const keywordOccurrences = useMemo(() => {
+    const plain = normalize(content.replace(/<[^>]*>/g, " "));
+    const totals = keywords.map(k => {
+      const nk = normalize(k);
+      if (!nk) return 0;
+      const regex = new RegExp(nk.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+      return (plain.match(regex) || []).length;
+    });
+    return totals.reduce((a, b) => a + b, 0);
+  }, [content, keywords]);
+  const density = useMemo(() => {
+    if (wordCountContent === 0) return 0;
+    return +(keywordOccurrences / wordCountContent * 100).toFixed(2);
+  }, [keywordOccurrences, wordCountContent]);
+
+  const hasExternalLink = useMemo(() => /<a[^>]+href="http(s)?:\/\//i.test(content), [content]);
+  const hasInternalLink = useMemo(() => /<a[^>]+href="\//i.test(content), [content]);
+  const hasImageWithAlt = useMemo(() => /<img[^>]*alt=\"[^\"]+\"/i.test(content), [content]);
+  const hasH2H3 = useMemo(() => /<h2>|<h3>/i.test(content), [content]);
+
+  const focusKeywords = keywords.length ? [keywords[0]] : []; // primary focus keyword is the first
+
+  const titleHasKeyword = containsAny(metaTitle || title, focusKeywords.length ? focusKeywords : keywords);
+  const descHasKeyword = containsAny(metaDescription, focusKeywords.length ? focusKeywords : keywords);
+  const urlHasKeyword = useMemo(() => {
+    const s = slugify(slug || '');
+    const kwList = (focusKeywords.length ? focusKeywords : keywords)
+      .map(slugify)
+      .filter(Boolean);
+    if (!s || kwList.length === 0) return false;
+    // 1) Direct inclusion of the full phrase
+    if (kwList.some(kw => s.includes(kw))) return true;
+    // 2) Fallback: for long multi-word keywords, ensure all tokens appear in the slug
+    return kwList.some(kw => {
+      const tokens = kw.split('-').filter(Boolean);
+      // consider "long" if 2+ tokens
+      if (tokens.length < 2) return false;
+      return tokens.every(t => s.includes(t));
+    });
+  }, [slug, keywords, focusKeywords]);
+  const contentHasKeyword = containsAny(content.replace(/<[^>]*>/g, " "), focusKeywords.length ? focusKeywords : keywords);
+  // Check if the FIRST NON-EMPTY PARAGRAPH contains the focus keyword anywhere
+  const firstParagraphHasKeyword = useMemo(() => {
+    const html = content || "";
+    // Find the first non-empty <p>...</p>
+    const regex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(html)) !== null) {
+      const paraText = match[1]
+        .replace(/<[^>]*>/g, " ") // strip inner tags
+        .replace(/&nbsp;/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (paraText) {
+        return containsAny(
+          paraText,
+          focusKeywords.length ? focusKeywords : keywords
+        );
+      }
+    }
+    // Fallback: check the first 100 words of plain text if no <p> found
+    const firstChunk = html
+      .replace(/<[^>]*>/g, " ")
+      .split(/\s+/)
+      .slice(0, 100)
+      .join(" ");
+    return containsAny(firstChunk, focusKeywords.length ? focusKeywords : keywords);
+  }, [content, keywords, focusKeywords]);
+
+  const titleContainsKeyword = containsAny(metaTitle || title, focusKeywords.length ? focusKeywords : keywords);
+  const titleHasNumber = /(\d+)/.test(metaTitle || title);
+
+  const seoChecks = {
+    basic: [
+      { text: "Không thấy từ khóa chính trên SEO title", checked: titleHasKeyword },
+      { text: "Không thấy từ khóa chính trong SEO Description", checked: descHasKeyword },
+      { text: "Không thấy từ khóa chính trong SEO URL", checked: urlHasKeyword },
+  { text: "Use Focus Keyword at the beginning of your content", checked: firstParagraphHasKeyword },
+      { text: "Không thấy từ khóa chính trong nội dung", checked: contentHasKeyword },
+      { text: "Nội dung có ít nhất 600 từ", checked: wordCountContent >= 600 },
+    ],
+    advanced: [
+      { text: "Có từ khóa trong H2/H3", checked: hasH2H3 && containsAny(content.replace(/<[^>]*>/g, " "), keywords) },
+      { text: "Có thẻ IMG với alt", checked: hasImageWithAlt },
+      { text: `Mật độ từ khóa trong mức 1% - 1.5% (hiện tại ${density}%)`, checked: density >= 1 && density <= 1.5 },
+      { text: "URL ngắn gọn (< 75 ký tự)", checked: (slug || "").length > 0 && (slug || "").length <= MAX_SLUG_LENGTH },
+      { text: "Có ít nhất một link ngoài (DoFollow)", checked: hasExternalLink },
+      { text: "Có ít nhất một link nội bộ", checked: hasInternalLink },
+    ],
+    title: [
+      { text: "SEO Title chứa từ khóa chính", checked: titleContainsKeyword },
+      { text: "Tiêu đề có chứa con số (vd: 10, 5)", checked: titleHasNumber },
+    ],
+  } as const;
+
+  const totalChecks = seoChecks.basic.length + seoChecks.advanced.length + seoChecks.title.length;
+  const passedChecks = [
+    ...seoChecks.basic,
+    ...seoChecks.advanced,
+    ...seoChecks.title,
+  ].filter(c => c.checked).length;
+  const seoScore = Math.round((passedChecks / totalChecks) * 100);
+
+  return (
+    <div className="container mx-auto p-4 h-screen overflow-hidden">
+       <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">Viết bài mới</h1>
+        <div>
+          <Button variant="outline" className="mr-2">Lưu nháp</Button>
+          <Button>Đăng bài</Button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 h-[calc(100vh-5rem)]">
+        {/* Main Content */}
+        <div className="lg:col-span-3 space-y-4 overflow-y-auto pr-2">
+          <Input
+            placeholder="Post Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="text-lg font-semibold"
+          />
+          <div className="rounded-md bg-muted/40">
+            <ReactQuill
+              theme="snow"
+              value={content}
+              onChange={setContent}
+              className="h-full rounded-md shadow-sm"
+              style={{ height: "calc(100vh - 240px)" }}
+              modules={{
+                toolbar: [
+                  [{ header: [1, 2, 3, false] }],
+                  ["bold", "italic", "underline", "strike", "blockquote"],
+                  [{ list: "ordered" }, { list: "bullet" }],
+                  ["link", "image"],
+                  ["clean"],
+                ],
+              }}
+            />
+            {/* Center only the typing area like a paper */}
+            <style>{`
+              .ql-toolbar.ql-snow {
+                border-radius: 8px 8px 0 0;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background: #fff;
+              }
+                img {
+                    margin: auto;
+                }
+              .ql-container.ql-snow {
+                border-radius: 0 0 8px 8px;
+                background: #f7f7f7; /* gray gutters */
+                padding-left: 24px;
+                padding-right: 24px;
+              }
+              .ql-container .ql-editor {
+                max-width: 860px;
+                margin: 0 auto;
+                padding: 24px;
+                background: #fff; /* white paper */
+                box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+                font-size: 16px; /* larger font size */
+                line-height: 1.8; /* improved readability */
+              }
+              .ql-container .ql-editor p {
+                margin: 16px 0; /* spacing between paragraphs */
+              }
+              /* Make the gray gutters visible by adding horizontal padding */
+              .ql-container.ql-snow .ql-editor {
+                /* already centered; ensure container has space */
+              }
+            `}</style>
+          </div>
+           <div className="text-right text-sm text-muted-foreground pt-10">
+            {wordCount} words
+          </div>
+        </div>
+
+        {/* SEO Sidebar */}
+        <div className="space-y-4 overflow-y-auto pl-2">
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="flex justify-between items-center text-base">
+                <span>SEO Score</span>
+                <span className="font-bold">{seoScore}%</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <Progress value={seoScore} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="flex justify-between items-center text-base">
+                <span>SERP Preview</span>
+                <Dialog open={isSerpModalOpen} onOpenChange={setIsSerpModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">Edit</Button>
+                  </DialogTrigger>
+                  <DialogOverlay className="bg-black/30" />
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-bold">Google Search Result Preview</DialogTitle>
+                      <DialogDescription>
+                        Tùy chọn này tương thích với plugin RankMath và Yoast SEO
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <Label htmlFor="meta-title" className="font-semibold text-base">
+                            Tiêu đề (SEO Title)
+                          </Label>
+                          <span className="text-sm text-muted-foreground">
+                            {metaTitle.length}/{MAX_META_TITLE_LENGTH}
+                          </span>
+                        </div>
+                        <Input id="meta-title" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} maxLength={MAX_META_TITLE_LENGTH} />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <Label htmlFor="slug" className="font-semibold text-base">
+                            Permalink
+                          </Label>
+                          <span className="text-sm text-muted-foreground">
+                            {slug.length}/{MAX_SLUG_LENGTH}
+                          </span>
+                        </div>
+                        <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} maxLength={MAX_SLUG_LENGTH} />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                           <div className="flex items-center gap-2">
+                             <Label htmlFor="meta-description" className="font-semibold text-base">
+                               Giới thiệu ngắn
+                             </Label>
+                             <Button variant="link" size="sm" className="p-0 h-auto text-blue-600 font-semibold">
+                               AI Rewrite <Zap className="w-3 h-3 ml-1" />
+                             </Button>
+                           </div>
+                          <span className="text-sm text-muted-foreground">
+                            {metaDescription.length}/{MAX_META_DESC_LENGTH}
+                          </span>
+                        </div>
+                        <Textarea id="meta-description" value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} maxLength={MAX_META_DESC_LENGTH} rows={4} placeholder="Tùy chọn giới thiệu trên Serp" />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit" onClick={() => setIsSerpModalOpen(false)} size="lg">Update</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+                <div className="text-sm text-blue-600 truncate">{metaTitle || title || "SEO Title"}</div>
+                <div className="text-sm text-green-600 truncate">https://volxai.com/{slug || ""}</div>
+                <div className="text-sm text-muted-foreground line-clamp-2">{metaDescription || "Meta description preview will appear here."}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-base flex justify-between items-center">
+                <span>Từ khóa</span>
+                <Button variant="link" size="sm" className="text-blue-600">In Đậm</Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <Input 
+                placeholder="Nhập từ khoá và nhấn Enter" 
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                onKeyDown={handleKeywordKeyDown}
+              />
+              <div className="flex flex-wrap gap-2 mt-3">
+                {keywords.map((keyword, index) => (
+                  <div key={index} className="flex items-center bg-blue-100 text-blue-700 text-sm font-medium px-2 py-1 rounded-md">
+                    <span>{keyword}</span>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => removeKeyword(keyword)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
+            <AccordionItem value="basic">
+              <AccordionTrigger>SEO Cơ bản ({seoChecks.basic.filter(c => !c.checked).length} Errors)</AccordionTrigger>
+              <AccordionContent>
+                <ul className="space-y-2">
+                  {seoChecks.basic.map((item, index) => (
+                    <SeoChecklistItem key={index} text={item.text} checked={item.checked} />
+                  ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="advanced">
+              <AccordionTrigger>Nâng cao ({seoChecks.advanced.filter(c => !c.checked).length} Errors)</AccordionTrigger>
+              <AccordionContent>
+                <ul className="space-y-2">
+                  {seoChecks.advanced.map((item, index) => (
+                    <SeoChecklistItem key={index} text={item.text} checked={item.checked} />
+                  ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="title">
+              <AccordionTrigger>Tiêu đề thu hút ({seoChecks.title.filter(c => !c.checked).length} Errors)</AccordionTrigger>
+              <AccordionContent>
+                <ul className="space-y-2">
+                  {seoChecks.title.map((item, index) => (
+                    <SeoChecklistItem key={index} text={item.text} checked={item.checked} />
+                  ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      </div>
+    </div>
+  );
+}

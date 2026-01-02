@@ -1,0 +1,143 @@
+# ========================================
+# VolxAI - .htaccess Configuration
+# For: Shared Hosting (cPanel/Apache)
+# ========================================
+
+# Enable mod_rewrite
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # Remove www from URL (optional - comment out if you want www)
+  # RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+  # RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+  
+  # Redirect HTTP to HTTPS (uncomment if using SSL)
+  # RewriteCond %{HTTPS} off
+  # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  
+  # Allow real files and directories to pass through
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  
+  # Route all requests to index.html for SPA routing
+  RewriteRule ^(.*)$ index.html [QSA,L]
+</IfModule>
+
+# ========================================
+# Security Headers
+# ========================================
+<IfModule mod_headers.c>
+  # Prevent clickjacking
+  Header set X-Frame-Options "SAMEORIGIN"
+  
+  # Enable XSS protection
+  Header set X-XSS-Protection "1; mode=block"
+  
+  # Prevent MIME type sniffing
+  Header set X-Content-Type-Options "nosniff"
+  
+  # Enable HSTS (HTTP Strict Transport Security)
+  # Uncomment if using HTTPS (one year in seconds)
+  # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  
+  # Set Referrer Policy
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  
+  # Content Security Policy (basic - adjust as needed)
+  Header set Content-Security-Policy "default-src 'self' https:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https://api.volxai.com;"
+</IfModule>
+
+# ========================================
+# Caching & Compression
+# ========================================
+
+# Enable gzip compression for text files
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/plain
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE text/xml
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE text/javascript
+  AddOutputFilterByType DEFLATE application/xml
+  AddOutputFilterByType DEFLATE application/xhtml+xml
+  AddOutputFilterByType DEFLATE application/rss+xml
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/x-javascript
+  AddOutputFilterByType DEFLATE application/json
+</IfModule>
+
+# Browser caching
+<IfModule mod_expires.c>
+  ExpiresActive On
+  
+  # Default: 1 month
+  ExpiresDefault "access plus 1 month"
+  
+  # HTML: Don't cache (so updates show immediately)
+  ExpiresByType text/html "access plus 0 seconds"
+  
+  # CSS & JavaScript: Cache for 1 year
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/javascript "access plus 1 year"
+  
+  # Images: Cache for 1 year
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  
+  # Fonts: Cache for 1 year
+  ExpiresByType font/ttf "access plus 1 year"
+  ExpiresByType font/otf "access plus 1 year"
+  ExpiresByType font/woff "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType application/font-woff "access plus 1 year"
+</IfModule>
+
+# ========================================
+# MIME Types
+# ========================================
+<IfModule mod_mime.c>
+  AddType application/json .json
+  AddType application/javascript .js
+  AddType text/css .css
+  AddType image/svg+xml .svg
+  AddType font/ttf .ttf
+  AddType font/otf .otf
+  AddType font/woff .woff
+  AddType font/woff2 .woff2
+  AddType application/font-woff .woff
+</IfModule>
+
+# ========================================
+# Prevent access to sensitive files
+# ========================================
+<FilesMatch "\.(env|sql|json|config|log)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# ========================================
+# Allow access to public files and folders
+# ========================================
+<FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|woff|woff2|ttf|otf|eot|js|css|ico)$">
+  <IfModule mod_authz_core.c>
+    Require all granted
+  </IfModule>
+</FilesMatch>
+
+# ========================================
+# UTF-8 Encoding
+# ========================================
+AddDefaultCharset utf-8
+AddCharset utf-8 .html
+AddCharset utf-8 .css
+AddCharset utf-8 .js
