@@ -1141,19 +1141,155 @@ export default function Account() {
             {activeTab === "write" && (
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <h1 className="text-4xl font-bold text-foreground">Viết bài</h1>
-                  <p className="text-lg text-muted-foreground">
-                    Bắt đầu viết bài viết mới của bạn
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className="text-4xl font-bold text-foreground">
+                        Viết bài bằng AI
+                      </h1>
+                      <p className="text-lg text-muted-foreground">
+                        Sử dụng AI để viết bài viết với nhiều tùy chọn
+                      </p>
+                    </div>
+                    <div className="px-4 py-2 bg-red-100 text-red-700 rounded-full text-sm font-medium">
+                      Cách sử dụng
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-white rounded-2xl border border-border p-8">
-                  <div className="text-center py-16">
-                    <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <h2 className="text-2xl font-bold text-foreground mb-2">
-                      Sắp có tính năng này
-                    </h2>
-                    <p className="text-muted-foreground">
-                      Tính năng viết bài sẽ sớm được cải thiện
+
+                {/* Writing Features Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Viết theo từ khóa */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết theo từ khóa
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Nhập từ khóa, độ dài, phong cách, sẽ giúp bạn viết bài nhanh chóng
+                    </p>
+                  </div>
+
+                  {/* Viết bài ngoài ngôn */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-green-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết bài ngoài ngôn
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Bài viết ngoài ngôn từ 1,200 tứ, tập trung vào ý tưởng chính
+                    </p>
+                  </div>
+
+                  {/* Viết Tin Tức */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-purple-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết Tin Tức
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Nội dung cập nhật theo ngày, phù hợp theo các website tin tức
+                    </p>
+                  </div>
+
+                  {/* Viết từ Google Search */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết từ Google Search
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Đề dàng lập lộp và viết vào Google AI Overviews
+                    </p>
+                  </div>
+
+                  {/* Viết theo dạng 2 */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-green-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết theo dạng 2
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Dạy trên dạn ý của bài viết và đã chính xác cao
+                    </p>
+                  </div>
+
+                  {/* Write Product Review */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-yellow-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Write Product Review
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Viết đánh giá, nhận xét chi tiết sản phẩm
+                    </p>
+                  </div>
+
+                  {/* Viết dạng toplist */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-indigo-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết bài dạng toplist
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Viết bài dạng toplist, the best, sản phẩm tốt nhất
+                    </p>
+                  </div>
+
+                  {/* Viết với trình soạn thảo AI */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-pink-100 rounded-lg">
+                        <Sparkles className="w-6 h-6 text-pink-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết với trình soạn thảo AI
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Tự do sử dụng trình soạn thảo AI và viết theo ý thích của bạn
+                    </p>
+                  </div>
+
+                  {/* Viết từ Facebook Post */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Viết từ Facebook Post
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Chuyển nội dung Facebook Post thành bài viết
                     </p>
                   </div>
                 </div>
