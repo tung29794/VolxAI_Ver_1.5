@@ -87,47 +87,11 @@ export default function WritingProgressView({
     return () => clearInterval(typingInterval);
   };
 
-  const handleContinueEditing = async () => {
-    try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        toast.error("Vui lòng đăng nhập lại");
-        return;
-      }
-
-      // Generate slug from keyword
-      const slug = formData.keyword
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-
-      const response = await fetch(buildApiUrl("/api/ai/generate-article"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          keyword: formData.keyword,
-          language: formData.language,
-          outlineType: formData.outlineType,
-          tone: formData.tone,
-          model: formData.model,
-          content: content,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        toast.error(error.error || "Có lỗi xảy ra khi lưu bài viết");
-        return;
-      }
-
-      const data = await response.json();
+  const handleContinueEditing = () => {
+    if (articleData && articleData.articleId) {
       toast.success("Bài viết đã được lưu thành công!");
-      onComplete(data.articleId);
-    } catch (error) {
-      console.error("Error saving article:", error);
+      onComplete(articleData.articleId);
+    } else {
       toast.error("Có lỗi xảy ra khi lưu bài viết");
     }
   };
