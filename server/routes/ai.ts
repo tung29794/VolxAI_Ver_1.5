@@ -318,8 +318,169 @@ const handleWriteMore: RequestHandler = async (req, res) => {
   }
 };
 
+interface GenerateArticleRequest {
+  keyword: string;
+  language: string;
+  outlineType: string;
+  outlineLength?: string;
+  customOutline?: string;
+  aiOutlineStyle?: string;
+  tone: string;
+  model: string;
+}
+
+const handleGenerateArticle: RequestHandler = async (req, res) => {
+  try {
+    if (!(await verifyUser(req, res))) return;
+
+    const {
+      keyword,
+      language,
+      outlineType,
+      tone,
+      model,
+    } = req.body as GenerateArticleRequest;
+
+    if (!keyword || !language || !tone || !model) {
+      res.status(400).json({
+        error: "keyword, language, tone, and model are required",
+      });
+      return;
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      res.status(500).json({ error: "OpenAI API key not configured" });
+      return;
+    }
+
+    // Build the prompt for article generation
+    let systemPrompt = `You are a professional SEO content writer. Write engaging, well-structured, and SEO-optimized articles.
+Write in ${language === "vi" ? "Vietnamese" : language} language.
+Tone: ${tone}
+Use proper formatting with headings (h2, h3) and paragraphs.`;
+
+    let userPrompt = `Write a comprehensive article about: "${keyword}"`;
+
+    if (outlineType === "ai-outline" || outlineType === "your-outline") {
+      userPrompt += `\n\nPlease structure the article with multiple sections using h2 and h3 headings.`;
+    }
+
+    // Generate the article using OpenAI
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: model === "GPT 5" ? "gpt-4-turbo" : "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: userPrompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 3000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("OpenAI API error:", errorData);
+      res.status(500).json({ error: "Failed to call OpenAI API" });
+      return;
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content?.trim();
+
+    if (!content) {
+      res.status(500).json({ error: "No response from OpenAI" });
+      return;
+    }
+
+    // Generate title from keyword
+    const titleResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "Generate a compelling, SEO-friendly title for an article. Return only the title.",
+          },
+          {
+            role: "user",
+            content: `Generate a title for an article about: "${keyword}"`,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 100,
+      }),
+    });
+
+    const titleData = await titleResponse.json();
+    const title = titleData.choices[0]?.message?.content?.trim() || keyword;
+
+    // Generate meta description
+    const slug = keyword
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    // Save article to database
+    const userId = (req as any).userId;
+    const result = await execute(
+      `INSERT INTO articles (
+        user_id,
+        title,
+        content,
+        meta_title,
+        meta_description,
+        slug,
+        keywords,
+        status,
+        created_at,
+        updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        userId,
+        title,
+        content,
+        title,
+        keyword,
+        slug,
+        JSON.stringify([keyword]),
+        "draft",
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Article generated and saved successfully",
+      articleId: (result as any).insertId,
+      title,
+      slug,
+    });
+  } catch (error) {
+    console.error("Error generating article:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 router.post("/rewrite", handleRewrite);
 router.post("/find-image", handleFindImage);
 router.post("/write-more", handleWriteMore);
+router.post("/generate-article", handleGenerateArticle);
 
 export { router as aiRouter };
