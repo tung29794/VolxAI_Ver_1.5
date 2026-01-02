@@ -73,6 +73,12 @@ export default function AdminDashboard() {
       icon: Package,
       description: "Quản lý gói dịch vụ",
     },
+    {
+      id: "apis",
+      label: "Quản lý API",
+      icon: Settings,
+      description: "Quản lý API keys",
+    },
   ];
 
   return (
