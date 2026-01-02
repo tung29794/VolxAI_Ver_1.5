@@ -214,14 +214,9 @@ export default function WriteByKeywordForm() {
         <div className="bg-white rounded-2xl border border-border p-8 space-y-6">
           {/* Keyword Section */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="keyword" className="text-base font-semibold">
-                Keyword:
-              </Label>
-              <span className="text-xs text-primary cursor-pointer hover:underline">
-                Nhận từ khóa phụ
-              </span>
-            </div>
+            <Label htmlFor="keyword" className="text-base font-semibold">
+              Keyword:
+            </Label>
             <p className="text-sm text-muted-foreground">
               Cung cấp một từ khóa mà bạn muốn AI viết nội dung cho bạn.
             </p>
