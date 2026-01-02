@@ -22,6 +22,7 @@ import Register from "./pages/Register";
 import Upgrade from "./pages/Upgrade";
 import Account from "./pages/Account";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminArticles from "./pages/AdminArticles";
 import ArticleEditor from "./pages/ArticleEditor";
 import NotFound from "./pages/NotFound";
 
