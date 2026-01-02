@@ -625,8 +625,12 @@ Keyword_3|Link_3`}
 
         {/* Action Buttons */}
         <div className="flex gap-3 justify-end">
-          <Button type="submit" className="bg-primary hover:bg-primary/90 flex items-center gap-2">
-            ➜ AI Write
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="bg-primary hover:bg-primary/90 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? "Đang xử lý..." : "➜ AI Write"}
           </Button>
         </div>
       </form>
