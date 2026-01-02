@@ -19,12 +19,14 @@ import {
   Settings,
   BookOpen,
   ChevronDown,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PaymentModal } from "@/components/PaymentModal";
 import { PlanSelectionModal } from "@/components/PlanSelectionModal";
 import { toast } from "sonner";
 import { buildApiUrl } from "@/lib/api";
+import WriteByKeywordForm from "@/components/WriteByKeywordForm";
 
 type AccountTab =
   | "profile"
