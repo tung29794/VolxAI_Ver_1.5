@@ -57,6 +57,9 @@ export async function createServer() {
   // Articles routes
   app.use("/api/articles", articlesRouter);
 
+  // API Keys routes
+  app.use("/api/api-keys", apiKeysRouter);
+
   // Demo route
   app.get("/api/demo", handleDemo);
 
