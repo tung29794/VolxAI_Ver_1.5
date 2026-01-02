@@ -5,19 +5,35 @@ const router = Router();
 
 interface RewriteRequest {
   text: string;
-  style: "standard" | "shorter" | "longer" | "easy" | "creative" | "funny" | "casual" | "friendly" | "professional";
+  style:
+    | "standard"
+    | "shorter"
+    | "longer"
+    | "easy"
+    | "creative"
+    | "funny"
+    | "casual"
+    | "friendly"
+    | "professional";
 }
 
 const stylePrompts: Record<RewriteRequest["style"], string> = {
-  standard: "Rewrite the following text in a standard, professional manner while maintaining its original meaning.",
-  shorter: "Rewrite the following text to be much shorter and more concise, removing unnecessary details.",
-  longer: "Expand the following text with more details, examples, and explanations while maintaining clarity.",
+  standard:
+    "Rewrite the following text in a standard, professional manner while maintaining its original meaning.",
+  shorter:
+    "Rewrite the following text to be much shorter and more concise, removing unnecessary details.",
+  longer:
+    "Expand the following text with more details, examples, and explanations while maintaining clarity.",
   easy: "Rewrite the following text to be easier to read and understand for a general audience. Use simpler words and shorter sentences.",
-  creative: "Rewrite the following text in a creative and engaging way that captures attention.",
+  creative:
+    "Rewrite the following text in a creative and engaging way that captures attention.",
   funny: "Rewrite the following text in a humorous and entertaining way.",
-  casual: "Rewrite the following text in a casual, conversational tone as if talking to a friend.",
-  friendly: "Rewrite the following text in a warm, friendly, and approachable tone.",
-  professional: "Rewrite the following text in a highly professional and formal tone suitable for business.",
+  casual:
+    "Rewrite the following text in a casual, conversational tone as if talking to a friend.",
+  friendly:
+    "Rewrite the following text in a warm, friendly, and approachable tone.",
+  professional:
+    "Rewrite the following text in a highly professional and formal tone suitable for business.",
 };
 
 const handleRewrite: RequestHandler = async (req, res) => {
@@ -51,7 +67,8 @@ const handleRewrite: RequestHandler = async (req, res) => {
         messages: [
           {
             role: "system",
-            content: "You are a professional content editor. Rewrite text as requested while maintaining accuracy and quality. Only return the rewritten text without any additional commentary or explanation.",
+            content:
+              "You are a professional content editor. Rewrite text as requested while maintaining accuracy and quality. Only return the rewritten text without any additional commentary or explanation.",
           },
           {
             role: "user",
@@ -82,7 +99,7 @@ const handleRewrite: RequestHandler = async (req, res) => {
     try {
       await query(
         `INSERT INTO ai_rewrite_history (original_text, rewritten_text, style, created_at) VALUES (?, ?, ?, NOW())`,
-        [text, rewrittenText, style]
+        [text, rewrittenText, style],
       );
     } catch (dbError) {
       // Log but don't fail the request if database insert fails

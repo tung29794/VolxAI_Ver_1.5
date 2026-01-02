@@ -7,11 +7,13 @@ The AI Rewrite feature has been successfully integrated into the Article Editor.
 ## What's New
 
 ### 1. Backend API Endpoint
+
 - **File**: `server/routes/ai.ts`
 - **Endpoint**: `POST /api/ai/rewrite`
 - **Description**: Accepts selected text and rewrite style, calls OpenAI API, and returns rewritten text
 
 **Request Body**:
+
 ```json
 {
   "text": "The text you want to rewrite",
@@ -20,6 +22,7 @@ The AI Rewrite feature has been successfully integrated into the Article Editor.
 ```
 
 **Response**:
+
 ```json
 {
   "rewrittenText": "The rewritten version of your text"
@@ -27,6 +30,7 @@ The AI Rewrite feature has been successfully integrated into the Article Editor.
 ```
 
 **Available Rewrite Styles**:
+
 - **Standard**: Professional and standard manner
 - **Shorter**: Concise and brief version
 - **Longer**: Expanded with more details
@@ -40,6 +44,7 @@ The AI Rewrite feature has been successfully integrated into the Article Editor.
 ### 2. Frontend Components
 
 #### Article Editor (`client/pages/ArticleEditor.tsx`)
+
 - **New Toolbar Button**: "⚡ AI" button added to Quill toolbar
 - **New State Variables**:
   - `isRewriteModalOpen`: Controls modal visibility
@@ -59,6 +64,7 @@ The AI Rewrite feature has been successfully integrated into the Article Editor.
 ### 3. Database Tracking
 
 #### New Table: `ai_rewrite_history`
+
 - **Fields**:
   - `id`: Primary key (AUTO_INCREMENT)
   - `original_text`: The text before rewriting (LONGTEXT)
@@ -75,6 +81,7 @@ This table logs all rewrite requests for analytics and usage tracking.
 ### 4. Environment Configuration
 
 **Required Environment Variable**:
+
 - `OPENAI_API_KEY`: Your OpenAI API key (already configured)
 
 The API key is securely stored as an environment variable and never exposed to the frontend.
@@ -82,32 +89,39 @@ The API key is securely stored as an environment variable and never exposed to t
 ## How to Use the AI Rewrite Feature
 
 ### Step 1: Access the Article Editor
+
 1. Navigate to `/admin/articles/new` or click "New Article" from the admin dashboard
 2. The editor will load with the Quill rich text editor
 
 ### Step 2: Write Your Content
+
 1. Enter a title in the "Post Title" field
 2. Write or paste content into the Quill editor
 
 ### Step 3: Select Text to Rewrite
+
 1. Highlight/select the text you want to rewrite in the editor
 2. The text must be at least 1 character long
 
 ### Step 4: Click the AI Rewrite Button
+
 1. In the Quill toolbar, click the "⚡ AI" button (blue button on the right of the toolbar)
 2. A modal dialog will appear showing your selected text
 
 ### Step 5: Choose a Rewrite Style
+
 1. The modal shows 9 different rewrite options
 2. Click on the style you prefer
 3. The API will process the request (you'll see a loading spinner)
 
 ### Step 6: Review the Result
+
 1. The selected text will be automatically replaced with the rewritten version
 2. The modal will close
 3. Your editor content is now updated
 
 ### Step 7: Continue Editing
+
 1. Make any additional edits as needed
 2. The rewritten text is now part of your document
 3. When you're ready, click "Đăng bài" to publish or "Lưu nháp" to save as draft
@@ -162,6 +176,7 @@ AI usage is logged to ai_rewrite_history table
 ## Installation & Setup
 
 ### Prerequisites
+
 - Node.js and npm/pnpm installed
 - Database setup completed (see DATABASE_SETUP.md)
 - OpenAI API key configured (already set in environment)
@@ -201,6 +216,7 @@ app.use("/api/ai", aiRouter);
 ### Frontend Setup
 
 The ArticleEditor component automatically includes:
+
 - Quill toolbar with AI button
 - Modal dialog for style selection
 - API integration and text replacement
@@ -208,10 +224,12 @@ The ArticleEditor component automatically includes:
 ## Files Modified
 
 ### Created Files
+
 - `server/routes/ai.ts` - AI rewrite endpoint
 - `database/migrations/add_ai_rewrite_history_table.sql` - Migration file
 
 ### Modified Files
+
 - `server/index.ts` - Added AI router registration
 - `client/pages/ArticleEditor.tsx` - Added AI rewrite UI and functionality
 - `database/init.sql` - Added ai_rewrite_history table
@@ -219,12 +237,14 @@ The ArticleEditor component automatically includes:
 ## Configuration
 
 ### OpenAI Settings
+
 - **Model**: gpt-3.5-turbo (cost-effective, fast)
 - **Temperature**: 0.7 (balanced between deterministic and creative)
 - **Max Tokens**: 2000 (sufficient for most rewrites)
 - **System Prompt**: Professional content editor instructions
 
 ### UI Settings
+
 - **Button Color**: Light blue (#dbeafe) with hover effect
 - **Button Position**: Toolbar (right side)
 - **Modal Max Height**: 400px (scrollable for many styles)
@@ -245,17 +265,17 @@ Query the `ai_rewrite_history` table to analyze:
 
 ```sql
 -- Most used rewrite styles
-SELECT style, COUNT(*) as count FROM ai_rewrite_history 
-GROUP BY style 
+SELECT style, COUNT(*) as count FROM ai_rewrite_history
+GROUP BY style
 ORDER BY count DESC;
 
 -- Daily usage
-SELECT DATE(created_at) as date, COUNT(*) as count 
-FROM ai_rewrite_history 
+SELECT DATE(created_at) as date, COUNT(*) as count
+FROM ai_rewrite_history
 GROUP BY DATE(created_at);
 
 -- Text length statistics
-SELECT 
+SELECT
     style,
     AVG(CHAR_LENGTH(original_text)) as avg_original_length,
     AVG(CHAR_LENGTH(rewritten_text)) as avg_rewritten_length
@@ -266,14 +286,17 @@ GROUP BY style;
 ## Troubleshooting
 
 ### Issue: "AI Rewrite button is not appearing"
+
 - **Solution**: Make sure you're on the Article Editor page (`/admin/articles/new`)
 - **Check**: Browser console for errors (F12 → Console tab)
 
 ### Issue: "Nothing happens when I click the AI button"
+
 - **Solution**: You must select text first before clicking the button
 - **Check**: Ensure at least 1 character is selected in the editor
 
 ### Issue: "Modal opens but API doesn't respond"
+
 - **Possible Causes**:
   - OpenAI API key is invalid
   - API key has expired
@@ -281,6 +304,7 @@ GROUP BY style;
 - **Solution**: Check OpenAI dashboard and renew key if needed
 
 ### Issue: "Error message: Failed to rewrite text"
+
 - **Possible Causes**:
   - Network connectivity issue
   - Server error

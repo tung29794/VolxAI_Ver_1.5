@@ -7,17 +7,21 @@ You now have an **AI Rewrite button** in the Article Editor toolbar that lets yo
 ## 🚀 How to Use (3 Simple Steps)
 
 ### 1️⃣ Open Article Editor
+
 ```
 Go to: /admin/articles/new
 ```
 
 ### 2️⃣ Select Text & Click AI Button
+
 - Write or paste content into the editor
 - **Highlight the text** you want to rewrite
 - Click the **⚡ AI** button in the toolbar (blue button on the right)
 
 ### 3️⃣ Choose a Style & Done!
+
 A modal will appear with these rewrite options:
+
 - 📝 **Standard** - Professional manner
 - ⏱️ **Shorter** - Concise version
 - 📖 **Longer** - Expanded with details
@@ -33,17 +37,20 @@ Click your preferred style → **Done!** Text is replaced automatically.
 ## 📋 Implementation Details
 
 ### Files Created
+
 ✅ `server/routes/ai.ts` - Backend API endpoint for OpenAI integration
 ✅ `database/migrations/add_ai_rewrite_history_table.sql` - Database migration file
 ✅ `AI_REWRITE_FEATURE_GUIDE.md` - Comprehensive documentation
 
 ### Files Modified
+
 ✅ `server/index.ts` - Registered AI routes
 ✅ `client/pages/ArticleEditor.tsx` - Added UI and functionality
 ✅ `database/init.sql` - Added ai_rewrite_history table
 ✅ `vite.config.ts` - Fixed Vite fs.allow (earlier issue)
 
 ### Environment
+
 ✅ `OPENAI_API_KEY` - Configured securely
 
 ## 🔧 Backend Endpoint
@@ -51,6 +58,7 @@ Click your preferred style → **Done!** Text is replaced automatically.
 **POST** `/api/ai/rewrite`
 
 **Request**:
+
 ```json
 {
   "text": "Your text here",
@@ -59,6 +67,7 @@ Click your preferred style → **Done!** Text is replaced automatically.
 ```
 
 **Response**:
+
 ```json
 {
   "rewrittenText": "Rewritten text here"
@@ -70,6 +79,7 @@ Click your preferred style → **Done!** Text is replaced automatically.
 New table automatically created: `ai_rewrite_history`
 
 Tracks:
+
 - Original text
 - Rewritten text
 - Style used
@@ -96,28 +106,29 @@ This allows you to analyze usage patterns and improve the feature.
 
 ```sql
 -- Check rewrite history
-SELECT * FROM ai_rewrite_history 
+SELECT * FROM ai_rewrite_history
 ORDER BY created_at DESC LIMIT 10;
 
 -- Most used styles
-SELECT style, COUNT(*) as count 
-FROM ai_rewrite_history 
-GROUP BY style 
+SELECT style, COUNT(*) as count
+FROM ai_rewrite_history
+GROUP BY style
 ORDER BY count DESC;
 ```
 
 ## 🐛 Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Button not showing | Make sure you're on `/admin/articles/new` |
-| Nothing happens | Select text first before clicking button |
-| API error | Check OpenAI API key and rate limits |
-| Database error | Run `node database/setup.js` to create tables |
+| Issue              | Solution                                      |
+| ------------------ | --------------------------------------------- |
+| Button not showing | Make sure you're on `/admin/articles/new`     |
+| Nothing happens    | Select text first before clicking button      |
+| API error          | Check OpenAI API key and rate limits          |
+| Database error     | Run `node database/setup.js` to create tables |
 
 ## 📚 Full Documentation
 
 See **AI_REWRITE_FEATURE_GUIDE.md** for complete documentation including:
+
 - Detailed architecture
 - Advanced configuration
 - Performance tips
@@ -129,5 +140,6 @@ See **AI_REWRITE_FEATURE_GUIDE.md** for complete documentation including:
 You're ready to use AI Rewrite. Try it out and enjoy faster content creation! 🎉
 
 Questions? Check the full guide or review the implementation in:
+
 - Frontend: `client/pages/ArticleEditor.tsx`
 - Backend: `server/routes/ai.ts`
