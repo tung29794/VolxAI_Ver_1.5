@@ -61,6 +61,7 @@ export default function ArticleEditor() {
   const [searchedImages, setSearchedImages] = useState<any[]>([]);
   const [isSearchingImages, setIsSearchingImages] = useState(false);
   const [activeTab, setActiveTab] = useState("seo"); // seo, ai, images, video
+  const [cursorPosition, setCursorPosition] = useState<number | null>(null);
 
   type RewriteStyle =
     | "standard"
