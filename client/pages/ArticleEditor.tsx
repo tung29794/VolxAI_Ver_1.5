@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, XCircle, X, Zap, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, X, Zap, Loader2, Image as ImageIcon } from "lucide-react";
+import { SelectionToolbar } from "@/components/SelectionToolbar";
 
 const SeoChecklistItem = ({ text, checked }) => (
   <li className="flex items-center gap-2 text-sm">
