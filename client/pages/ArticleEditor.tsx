@@ -201,6 +201,99 @@ export default function ArticleEditor() {
     }
   };
 
+  // Handler for floating toolbar - Find Image
+  const handleFindImage = async () => {
+    if (!selectedText) return;
+
+    setIsSearchingImages(true);
+    setActiveTab("images");
+
+    try {
+      const response = await fetch("/api/ai/find-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          keyword: selectedText,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to find images");
+      }
+
+      const data = await response.json();
+      setSearchedImages(data.images || []);
+    } catch (error) {
+      console.error("Error finding images:", error);
+      alert("Failed to find images. Please try again.");
+    } finally {
+      setIsSearchingImages(false);
+    }
+  };
+
+  // Handler for floating toolbar - Write More
+  const handleWriteMore = async () => {
+    if (!quillRef.current) return;
+
+    setIsRewriting(true);
+
+    try {
+      const response = await fetch("/api/ai/write-more", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: content,
+          title: title,
+          keywords: keywords,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to write more");
+      }
+
+      const data = await response.json();
+      const writtenContent = data.writtenContent;
+
+      // Append to editor
+      const editor = quillRef.current.getEditor();
+      const length = editor.getLength();
+      editor.insertText(length - 1, "\n\n" + writtenContent);
+      editor.setSelection(length + writtenContent.length);
+
+      setFloatingToolbarVisible(false);
+      setSelectedText("");
+    } catch (error) {
+      console.error("Error writing more:", error);
+      alert("Failed to write more content. Please try again.");
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
+  // Detect text selection in Quill
+  const handleEditorSelection = () => {
+    if (!quillRef.current) return;
+
+    const editor = quillRef.current.getEditor();
+    const selection = editor.getSelection();
+
+    if (selection && selection.length > 0) {
+      const text = editor.getText(selection.index, selection.length).trim();
+      if (text) {
+        setSelectedText(text);
+        setFloatingToolbarVisible(true);
+      }
+    } else {
+      setFloatingToolbarVisible(false);
+      setSelectedText("");
+    }
+  };
+
   const removeKeyword = (keywordToRemove) => {
     setKeywords(keywords.filter((keyword) => keyword !== keywordToRemove));
   };
