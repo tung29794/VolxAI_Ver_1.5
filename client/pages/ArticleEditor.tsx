@@ -306,6 +306,80 @@ export default function ArticleEditor() {
     setKeywords(keywords.filter((keyword) => keyword !== keywordToRemove));
   };
 
+  // Auto-generate slug from title if empty
+  const generateSlug = (text: string) => {
+    return normalize(text)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "d")
+      .replace(/[\/]+/g, "-")
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
+
+  const handleSaveArticle = async (status: "draft" | "published") => {
+    // Validation
+    if (!title.trim()) {
+      alert("Vui lòng nhập tiêu đề bài viết");
+      return;
+    }
+
+    if (!content.trim()) {
+      alert("Vui lòng nhập nội dung bài viết");
+      return;
+    }
+
+    const finalSlug = slug.trim() || generateSlug(title);
+
+    setIsPublishing(true);
+
+    try {
+      const response = await fetch("/api/articles/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          content,
+          metaTitle: metaTitle.trim() || title.trim(),
+          metaDescription: metaDescription.trim(),
+          slug: finalSlug,
+          keywords,
+          featuredImage,
+          status,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save article");
+      }
+
+      const data = await response.json();
+
+      if (status === "published") {
+        alert("Bài viết đã được đăng lên!");
+        // Redirect to blog page
+        window.location.href = "/blog";
+      } else {
+        alert("Bài viết đã được lưu nháp!");
+        // Redirect to admin articles page
+        window.location.href = "/admin/articles";
+      }
+    } catch (error) {
+      console.error("Error saving article:", error);
+      alert(
+        `Lỗi: ${error instanceof Error ? error.message : "Không thể lưu bài viết"}`
+      );
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   // Helpers
   const normalize = (s: string) => s.toLowerCase().trim();
   const slugify = (s: string) =>
