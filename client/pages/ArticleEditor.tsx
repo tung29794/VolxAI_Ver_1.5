@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, XCircle, X, Zap } from "lucide-react";
+import { CheckCircle, XCircle, X, Zap, Loader2 } from "lucide-react";
 
 const SeoChecklistItem = ({ text, checked }) => (
   <li className="flex items-center gap-2 text-sm">
@@ -48,6 +48,26 @@ export default function ArticleEditor() {
   const [metaDescription, setMetaDescription] = useState("");
   const [isSerpModalOpen, setIsSerpModalOpen] = useState(false);
   const [accordionValue, setAccordionValue] = useState("basic");
+
+  // AI Rewrite states
+  const [isRewriteModalOpen, setIsRewriteModalOpen] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
+  const [isRewriting, setIsRewriting] = useState(false);
+  const quillRef = useRef<ReactQuill>(null);
+
+  type RewriteStyle = "standard" | "shorter" | "longer" | "easy" | "creative" | "funny" | "casual" | "friendly" | "professional";
+
+  const rewriteOptions: { label: string; style: RewriteStyle }[] = [
+    { label: "Standard", style: "standard" },
+    { label: "Shorter", style: "shorter" },
+    { label: "Longer", style: "longer" },
+    { label: "Easy to read", style: "easy" },
+    { label: "More creative", style: "creative" },
+    { label: "More funny", style: "funny" },
+    { label: "More casual", style: "casual" },
+    { label: "More friendly", style: "friendly" },
+    { label: "More professional", style: "professional" },
+  ];
 
   const MAX_META_TITLE_LENGTH = 60;
   const MAX_SLUG_LENGTH = 75;
