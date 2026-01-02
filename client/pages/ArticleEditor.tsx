@@ -56,6 +56,12 @@ export default function ArticleEditor() {
   const [isRewriting, setIsRewriting] = useState(false);
   const quillRef = useRef<ReactQuill>(null);
 
+  // Floating toolbar and image search states
+  const [floatingToolbarVisible, setFloatingToolbarVisible] = useState(false);
+  const [searchedImages, setSearchedImages] = useState<any[]>([]);
+  const [isSearchingImages, setIsSearchingImages] = useState(false);
+  const [activeTab, setActiveTab] = useState("seo"); // seo, ai, images, video
+
   type RewriteStyle =
     | "standard"
     | "shorter"
