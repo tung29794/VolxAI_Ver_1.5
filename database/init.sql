@@ -213,6 +213,20 @@ INSERT IGNORE INTO subscription_plans (
 ('premium', 'Premium', 'Giải pháp hoàn chỉnh cho doanh nghiệp', 1200000, 12000000, 6500000, 1000, 'Crown', 6, TRUE, JSON_ARRAY());
 
 -- ====================================================================
+-- Create AI Rewrite History Table
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS ai_rewrite_history (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    original_text LONGTEXT NOT NULL,
+    rewritten_text LONGTEXT NOT NULL,
+    style VARCHAR(50) NOT NULL COMMENT 'standard, shorter, longer, easy, creative, funny, casual, friendly, professional',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_style (style),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Log of AI text rewriting requests for analysis and tracking';
+
+-- ====================================================================
 -- Verify tables created
 -- ====================================================================
 -- Run this query to verify all tables were created:
@@ -224,3 +238,4 @@ INSERT IGNORE INTO subscription_plans (
 -- DESCRIBE articles;
 -- DESCRIBE token_usage_history;
 -- DESCRIBE audit_logs;
+-- DESCRIBE ai_rewrite_history;
