@@ -18,8 +18,10 @@ import AdminArticles from "@/components/admin/AdminArticles";
 import AdminPayments from "@/components/admin/AdminPayments";
 import AdminPlans from "@/components/admin/AdminPlans";
 import AdminFeatures from "@/components/admin/AdminFeatures";
+import AdminAPIs from "@/components/admin/AdminAPIs";
+import { Settings } from "lucide-react";
 
-type AdminTab = "overview" | "articles" | "payments" | "plans" | "features";
+type AdminTab = "overview" | "articles" | "payments" | "plans" | "features" | "apis";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
