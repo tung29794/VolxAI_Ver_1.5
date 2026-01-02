@@ -1163,7 +1163,10 @@ export default function Account() {
                 {/* Writing Features Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Viết theo từ khóa */}
-                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                  <button
+                    onClick={() => setActiveWritingFeature("keyword")}
+                    className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer text-left"
+                  >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
                         <FileText className="w-6 h-6 text-blue-600" />
@@ -1175,7 +1178,7 @@ export default function Account() {
                     <p className="text-sm text-muted-foreground">
                       Nhập từ khóa, độ dài, phong cách, sẽ giúp bạn viết bài nhanh chóng
                     </p>
-                  </div>
+                  </button>
 
                   {/* Viết bài ngắn gọn */}
                   <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
