@@ -3,17 +3,52 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
-import { User, Mail, Lock, Zap, TrendingUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  User,
+  Mail,
+  Lock,
+  Zap,
+  TrendingUp,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Sparkles,
+  Zap as ZapIcon,
+  Settings,
+  BookOpen,
+  ChevronDown,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PaymentModal } from "@/components/PaymentModal";
 import { PlanSelectionModal } from "@/components/PlanSelectionModal";
 import { toast } from "sonner";
 import { buildApiUrl } from "@/lib/api";
 
+type AccountTab =
+  | "profile"
+  | "write"
+  | "batch"
+  | "rewrite"
+  | "auto-blog"
+  | "optimize"
+  | "articles"
+  | "auto-index"
+  | "website"
+  | "knowledge";
+
 export default function Account() {
   const { user, logoutUser } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<AccountTab>("profile");
+  const [sidebarOpen, setSidebarOpen] = useState(
+    typeof window !== "undefined" && window.innerWidth >= 768
+  );
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    writing: true,
+    config: false,
+  });
 
   const [formData, setFormData] = useState({
     username: "",
@@ -447,6 +482,89 @@ export default function Account() {
     return planNames[planType] || planType;
   };
 
+  const toggleMenu = (menuKey: string) => {
+    setExpandedMenus((prev) => ({
+      ...prev,
+      [menuKey]: !prev[menuKey],
+    }));
+  };
+
+  const menuItems = [
+    {
+      id: "profile",
+      label: "Tài khoản",
+      icon: User,
+      description: "Thông tin cá nhân",
+    },
+    {
+      id: "writing-group",
+      label: "Viết bài",
+      icon: FileText,
+      description: "Công cụ viết bài",
+      isGroup: true,
+      children: [
+        {
+          id: "write",
+          label: "Viết bài",
+          icon: FileText,
+        },
+        {
+          id: "batch",
+          label: "Viết hàng loạt",
+          icon: FileText,
+        },
+        {
+          id: "rewrite",
+          label: "Viết lại",
+          icon: Sparkles,
+        },
+      ],
+    },
+    {
+      id: "auto-blog",
+      label: "Tự động viết blog",
+      icon: ZapIcon,
+      description: "AI tạo bài viết tự động",
+    },
+    {
+      id: "optimize",
+      label: "Tối ưu bài viết",
+      icon: TrendingUp,
+      description: "Cải thiện SEO",
+    },
+    {
+      id: "articles",
+      label: "Tất cả bài viết",
+      icon: FileText,
+      description: "Quản lý bài viết",
+    },
+    {
+      id: "auto-index",
+      label: "Tự động Index",
+      icon: ZapIcon,
+      description: "Nộp URL tự động",
+    },
+    {
+      id: "config-group",
+      label: "Cấu hình",
+      icon: Settings,
+      description: "Tùy chỉnh hệ thống",
+      isGroup: true,
+      children: [
+        {
+          id: "website",
+          label: "Website",
+          icon: Settings,
+        },
+        {
+          id: "knowledge",
+          label: "Kiến thức",
+          icon: BookOpen,
+        },
+      ],
+    },
+  ];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-white to-primary/5">
@@ -463,413 +581,781 @@ export default function Account() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-primary/5">
+    <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="container mx-auto px-4 py-20">
-        <div className="max-w-2xl mx-auto space-y-8">
-          {/* Page Title */}
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold text-foreground">
-              Tài khoản của tôi
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Quản lý thông tin tài khoản và cài đặt bảo mật
-            </p>
+      <div className="flex flex-1">
+        {/* Sidebar */}
+        <div
+          className={`${
+            sidebarOpen ? "w-64" : "w-20"
+          } bg-white border-r border-border transition-all duration-300 flex flex-col`}
+        >
+          {/* Toggle Button */}
+          <div className="p-4 border-b border-border flex items-center justify-center">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
+            >
+              {sidebarOpen ? (
+                <ChevronLeft className="w-5 h-5" />
+              ) : (
+                <ChevronRight className="w-5 h-5" />
+              )}
+            </button>
           </div>
 
-          {/* Username Section */}
-          <div className="bg-white rounded-2xl border border-border p-8 space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                <User className="w-6 h-6 text-primary" />
-                Thông tin tài khoản
-              </h2>
-            </div>
-
-            <div className="space-y-4">
-              {/* Username - Disabled */}
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-base font-medium">
-                  Tên tài khoản
-                </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={formData.username}
-                  disabled
-                  className="h-12 text-base bg-muted cursor-not-allowed opacity-60"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Tên tài khoản không thể thay đổi
-                </p>
-              </div>
-
-              {/* Full Name */}
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-base font-medium">
-                  Họ và tên
-                </Label>
-                {!isEditingFullName ? (
-                  <div className="flex gap-2">
-                    <Input
-                      id="fullName"
-                      type="text"
-                      value={formData.fullName}
-                      disabled
-                      className="h-12 text-base bg-muted cursor-not-allowed opacity-60"
-                    />
-                    <Button
-                      onClick={() => setIsEditingFullName(true)}
-                      variant="outline"
-                      className="h-12"
-                    >
-                      Sửa
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Input
-                      id="fullName"
-                      type="text"
-                      value={formData.fullName}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          fullName: e.target.value,
-                        }))
-                      }
-                      placeholder="Nhập họ và tên"
-                      className="h-12 text-base"
-                    />
-                    {fullNameMessage && (
-                      <p
-                        className={`text-sm ${
-                          fullNameMessage.includes("thành công")
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {fullNameMessage}
-                      </p>
-                    )}
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleSaveFullName}
-                        disabled={fullNameLoading}
-                        className="flex-1 bg-primary hover:bg-primary/90 h-10 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {fullNameLoading ? "Đang lưu..." : "Lưu"}
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setIsEditingFullName(false);
-                          setFullNameMessage("");
-                        }}
-                        variant="outline"
-                        className="flex-1 h-10"
-                        disabled={fullNameLoading}
-                      >
-                        Hủy
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-base font-medium">
-                  Email
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3.5 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    disabled
-                    className="h-12 text-base pl-10 bg-muted cursor-not-allowed opacity-60"
-                  />
-                </div>
-              </div>
-
-              {/* Account Type */}
-              <div className="space-y-2">
-                <Label className="text-base font-medium">Gói dịch vụ</Label>
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-xl gap-4">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg flex-shrink-0">
-                      <Zap className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-foreground">
-                        {getPlanInfo()}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {subscription?.tokens_limit?.toLocaleString() ||
-                          "10,000"}{" "}
-                        tokens/tháng
-                      </p>
-                      {subscription?.expires_at && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Hết hạn:{" "}
-                          {new Date(subscription.expires_at).toLocaleDateString(
-                            "vi-VN",
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleUpgradeClick}
-                    className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg whitespace-nowrap"
-                  >
-                    {subscription?.plan_type === "free"
-                      ? "Nâng cấp"
-                      : "Thay đổi gói"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Upgrade History Section */}
-          <div className="bg-white rounded-2xl border border-border p-8 space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                <TrendingUp className="w-6 h-6 text-primary" />
-                Lịch sử nâng cấp
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Xem tất cả các lần nâng cấp gói dịch vụ của bạn
-              </p>
-            </div>
-
-            {historyLoading ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Đang tải lịch sử nâng cấp...
-                </p>
-              </div>
-            ) : upgradeHistory.length > 0 ? (
-              <div className="space-y-3">
-                {upgradeHistory.map((history) => {
-                  const isPending =
-                    history.status === "⏳ Chờ duyệt";
-                  const isRejected = 
-                    history.status === "Từ chối";
-                  return (
-                    <div
-                      key={history.id}
-                      className={`flex flex-col p-4 border rounded-lg transition-colors ${
-                        isPending
-                          ? "border-yellow-300 bg-yellow-50"
-                          : isRejected
-                            ? "border-red-300 bg-red-50"
-                            : "border-border hover:border-primary/50"
+          {/* Menu Items */}
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+            {menuItems.map((item) => {
+              if (item.isGroup) {
+                const Icon = item.icon;
+                const isExpanded = expandedMenus[item.id];
+                return (
+                  <div key={item.id}>
+                    <button
+                      onClick={() => toggleMenu(item.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                        isExpanded
+                          ? "bg-primary/10"
+                          : "text-foreground hover:bg-muted"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1 flex-1">
-                          <p className="font-semibold text-foreground">
-                            Nâng cấp từ {history.fromPlan} → {history.toPlan}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {history.date}
-                          </p>
-                        </div>
-                        <div className="text-right space-y-1">
-                          <p className="font-semibold text-primary">
-                            {history.amount}
-                          </p>
-                          <p
-                            className={`text-xs font-medium ${
-                              isPending
-                                ? "text-yellow-700 bg-yellow-100 px-2 py-1 rounded"
-                                : isRejected
-                                  ? "text-red-700 bg-red-100 px-2 py-1 rounded"
-                                  : history.status === "Đã hoàn tất"
-                                    ? "text-green-600"
-                                    : "text-muted-foreground"
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      {sidebarOpen && (
+                        <div className="text-left flex-1 min-w-0 flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-sm truncate">
+                              {item.label}
+                            </div>
+                          </div>
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform flex-shrink-0 ${
+                              isExpanded ? "rotate-180" : ""
                             }`}
-                          >
-                            {isPending
-                              ? "⏳ Chờ duyệt"
-                              : history.status}
-                          </p>
-                        </div>
-                      </div>
-                      {isRejected && history.rejectionReason && (
-                        <div className="mt-2 pt-2 border-t border-red-200">
-                          <p className="text-xs text-red-700 font-medium">Lý do từ chối:</p>
-                          <p className="text-sm text-red-600 mt-1">{history.rejectionReason}</p>
+                          />
                         </div>
                       )}
+                    </button>
+                    {isExpanded && sidebarOpen && item.children && (
+                      <div className="ml-6 space-y-1 mt-1">
+                        {item.children.map((child) => {
+                          const ChildIcon = child.icon;
+                          return (
+                            <button
+                              key={child.id}
+                              onClick={() => {
+                                setActiveTab(child.id as AccountTab);
+                                if (window.innerWidth < 768) {
+                                  setSidebarOpen(false);
+                                }
+                              }}
+                              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
+                                activeTab === child.id
+                                  ? "bg-primary text-white"
+                                  : "text-foreground hover:bg-muted"
+                              }`}
+                            >
+                              <ChildIcon className="w-4 h-4 flex-shrink-0" />
+                              <span className="truncate">{child.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id as AccountTab);
+                    if (window.innerWidth < 768) {
+                      setSidebarOpen(false);
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                    activeTab === item.id
+                      ? "bg-primary text-white"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {sidebarOpen && (
+                    <div className="text-left flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">
+                        {item.label}
+                      </div>
+                      <div className="text-xs opacity-75 hidden sm:block truncate">
+                        {item.description}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Bạn chưa có lịch sử nâng cấp
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* User Info & Logout */}
+          <div className="p-4 border-t border-border space-y-3">
+            {sidebarOpen && (
+              <div className="text-sm min-w-0">
+                <p className="font-medium text-foreground truncate">
+                  {user?.username || "User"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user?.email || "user@example.com"}
                 </p>
               </div>
             )}
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className={`w-full text-sm ${sidebarOpen ? "" : "p-2"}`}
+              size="sm"
+              disabled={logoutLoading}
+            >
+              <LogOut className="w-4 h-4" />
+              {sidebarOpen && "Đăng xuất"}
+            </Button>
           </div>
+        </div>
 
-          {/* Security Section */}
-          <div className="bg-white rounded-2xl border border-border p-8 space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                <Lock className="w-6 h-6 text-primary" />
-                Bảo mật
-              </h2>
-            </div>
-
-            {!showChangePassword ? (
-              <Button
-                onClick={() => setShowChangePassword(true)}
-                variant="outline"
-                className="w-full h-12 text-base"
-              >
-                Đổi mật khẩu
-              </Button>
-            ) : (
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                {/* Success Message */}
-                {passwordSuccess && (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-green-700 font-medium">
-                      {passwordMessage}
-                    </p>
-                  </div>
-                )}
-
-                {/* Error Message */}
-                {passwordMessage && !passwordSuccess && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-700 font-medium">
-                      {passwordMessage}
-                    </p>
-                  </div>
-                )}
-                {/* Current Password */}
+        {/* Main Content */}
+        <div className="flex-1 w-full">
+          <div className="p-4 md:p-8 max-w-6xl mx-auto">
+            {/* Profile Section */}
+            {activeTab === "profile" && (
+              <div className="space-y-8">
+                {/* Page Title */}
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="currentPassword"
-                    className="text-base font-medium"
-                  >
-                    Mật khẩu hiện tại
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3.5 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="currentPassword"
-                      name="currentPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      value={passwordData.currentPassword}
-                      onChange={handlePasswordChange}
-                      className={`h-12 text-base pl-10 ${
-                        passwordErrors.currentPassword
-                          ? "border-destructive"
-                          : ""
-                      }`}
-                    />
+                  <h1 className="text-4xl font-bold text-foreground">
+                    Tài khoản của tôi
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Quản lý thông tin tài khoản và cài đặt bảo mật
+                  </p>
+                </div>
+
+                {/* Username Section */}
+                <div className="bg-white rounded-2xl border border-border p-8 space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                      <User className="w-6 h-6 text-primary" />
+                      Thông tin tài khoản
+                    </h2>
                   </div>
-                  {passwordErrors.currentPassword && (
-                    <p className="text-destructive text-sm">
-                      {passwordErrors.currentPassword}
+
+                  <div className="space-y-4">
+                    {/* Username - Disabled */}
+                    <div className="space-y-2">
+                      <Label htmlFor="username" className="text-base font-medium">
+                        Tên tài khoản
+                      </Label>
+                      <Input
+                        id="username"
+                        type="text"
+                        value={formData.username}
+                        disabled
+                        className="h-12 text-base bg-muted cursor-not-allowed opacity-60"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Tên tài khoản không thể thay đổi
+                      </p>
+                    </div>
+
+                    {/* Full Name */}
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName" className="text-base font-medium">
+                        Họ và tên
+                      </Label>
+                      {!isEditingFullName ? (
+                        <div className="flex gap-2">
+                          <Input
+                            id="fullName"
+                            type="text"
+                            value={formData.fullName}
+                            disabled
+                            className="h-12 text-base bg-muted cursor-not-allowed opacity-60"
+                          />
+                          <Button
+                            onClick={() => setIsEditingFullName(true)}
+                            variant="outline"
+                            className="h-12"
+                          >
+                            Sửa
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Input
+                            id="fullName"
+                            type="text"
+                            value={formData.fullName}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                fullName: e.target.value,
+                              }))
+                            }
+                            placeholder="Nhập họ và tên"
+                            className="h-12 text-base"
+                          />
+                          {fullNameMessage && (
+                            <p
+                              className={`text-sm ${
+                                fullNameMessage.includes("thành công")
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {fullNameMessage}
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={handleSaveFullName}
+                              disabled={fullNameLoading}
+                              className="flex-1 bg-primary hover:bg-primary/90 h-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {fullNameLoading ? "Đang lưu..." : "Lưu"}
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setIsEditingFullName(false);
+                                setFullNameMessage("");
+                              }}
+                              variant="outline"
+                              className="flex-1 h-10"
+                              disabled={fullNameLoading}
+                            >
+                              Hủy
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Email */}
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-base font-medium">
+                        Email
+                      </Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-3.5 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          disabled
+                          className="h-12 text-base pl-10 bg-muted cursor-not-allowed opacity-60"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Account Type */}
+                    <div className="space-y-2">
+                      <Label className="text-base font-medium">Gói dịch vụ</Label>
+                      <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-xl gap-4">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg flex-shrink-0">
+                            <Zap className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-foreground">
+                              {getPlanInfo()}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {subscription?.tokens_limit?.toLocaleString() ||
+                                "10,000"}{" "}
+                              tokens/tháng
+                            </p>
+                            {subscription?.expires_at && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Hết hạn:{" "}
+                                {new Date(subscription.expires_at).toLocaleDateString(
+                                  "vi-VN",
+                                )}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          onClick={handleUpgradeClick}
+                          className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg whitespace-nowrap"
+                        >
+                          {subscription?.plan_type === "free"
+                            ? "Nâng cấp"
+                            : "Thay đổi gói"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Upgrade History Section */}
+                <div className="bg-white rounded-2xl border border-border p-8 space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                      <TrendingUp className="w-6 h-6 text-primary" />
+                      Lịch sử nâng cấp
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Xem tất cả các lần nâng cấp gói dịch vụ của bạn
                     </p>
+                  </div>
+
+                  {historyLoading ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        Đang tải lịch sử nâng cấp...
+                      </p>
+                    </div>
+                  ) : upgradeHistory.length > 0 ? (
+                    <div className="space-y-3">
+                      {upgradeHistory.map((history) => {
+                        const isPending = history.status === "⏳ Chờ duyệt";
+                        const isRejected = history.status === "Từ chối";
+                        return (
+                          <div
+                            key={history.id}
+                            className={`flex flex-col p-4 border rounded-lg transition-colors ${
+                              isPending
+                                ? "border-yellow-300 bg-yellow-50"
+                                : isRejected
+                                  ? "border-red-300 bg-red-50"
+                                  : "border-border hover:border-primary/50"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1 flex-1">
+                                <p className="font-semibold text-foreground">
+                                  Nâng cấp từ {history.fromPlan} → {history.toPlan}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {history.date}
+                                </p>
+                              </div>
+                              <div className="text-right space-y-1">
+                                <p className="font-semibold text-primary">
+                                  {history.amount}
+                                </p>
+                                <p
+                                  className={`text-xs font-medium ${
+                                    isPending
+                                      ? "text-yellow-700 bg-yellow-100 px-2 py-1 rounded"
+                                      : isRejected
+                                        ? "text-red-700 bg-red-100 px-2 py-1 rounded"
+                                        : history.status === "Đã hoàn tất"
+                                          ? "text-green-600"
+                                          : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {isPending ? "⏳ Chờ duyệt" : history.status}
+                                </p>
+                              </div>
+                            </div>
+                            {isRejected && history.rejectionReason && (
+                              <div className="mt-2 pt-2 border-t border-red-200">
+                                <p className="text-xs text-red-700 font-medium">
+                                  Lý do từ chối:
+                                </p>
+                                <p className="text-sm text-red-600 mt-1">
+                                  {history.rejectionReason}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        Bạn chưa có lịch sử nâng cấp
+                      </p>
+                    </div>
                   )}
                 </div>
 
-                {/* New Password */}
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="newPassword"
-                    className="text-base font-medium"
-                  >
-                    Mật khẩu mới
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3.5 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="newPassword"
-                      name="newPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      value={passwordData.newPassword}
-                      onChange={handlePasswordChange}
-                      className={`h-12 text-base pl-10 ${
-                        passwordErrors.newPassword ? "border-destructive" : ""
-                      }`}
-                    />
+                {/* Security Section */}
+                <div className="bg-white rounded-2xl border border-border p-8 space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                      <Lock className="w-6 h-6 text-primary" />
+                      Bảo mật
+                    </h2>
                   </div>
-                  {passwordErrors.newPassword && (
-                    <p className="text-destructive text-sm">
-                      {passwordErrors.newPassword}
-                    </p>
+
+                  {!showChangePassword ? (
+                    <Button
+                      onClick={() => setShowChangePassword(true)}
+                      variant="outline"
+                      className="w-full h-12 text-base"
+                    >
+                      Đổi mật khẩu
+                    </Button>
+                  ) : (
+                    <form onSubmit={handleChangePassword} className="space-y-4">
+                      {/* Success Message */}
+                      {passwordSuccess && (
+                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-green-700 font-medium">
+                            {passwordMessage}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Error Message */}
+                      {passwordMessage && !passwordSuccess && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-red-700 font-medium">
+                            {passwordMessage}
+                          </p>
+                        </div>
+                      )}
+                      {/* Current Password */}
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="currentPassword"
+                          className="text-base font-medium"
+                        >
+                          Mật khẩu hiện tại
+                        </Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3.5 w-5 h-5 text-muted-foreground" />
+                          <Input
+                            id="currentPassword"
+                            name="currentPassword"
+                            type="password"
+                            placeholder="••••••••"
+                            value={passwordData.currentPassword}
+                            onChange={handlePasswordChange}
+                            className={`h-12 text-base pl-10 ${
+                              passwordErrors.currentPassword
+                                ? "border-destructive"
+                                : ""
+                            }`}
+                          />
+                        </div>
+                        {passwordErrors.currentPassword && (
+                          <p className="text-destructive text-sm">
+                            {passwordErrors.currentPassword}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* New Password */}
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="newPassword"
+                          className="text-base font-medium"
+                        >
+                          Mật khẩu mới
+                        </Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3.5 w-5 h-5 text-muted-foreground" />
+                          <Input
+                            id="newPassword"
+                            name="newPassword"
+                            type="password"
+                            placeholder="••••••••"
+                            value={passwordData.newPassword}
+                            onChange={handlePasswordChange}
+                            className={`h-12 text-base pl-10 ${
+                              passwordErrors.newPassword ? "border-destructive" : ""
+                            }`}
+                          />
+                        </div>
+                        {passwordErrors.newPassword && (
+                          <p className="text-destructive text-sm">
+                            {passwordErrors.newPassword}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Confirm Password */}
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="confirmPassword"
+                          className="text-base font-medium"
+                        >
+                          Xác nhận mật khẩu
+                        </Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3.5 w-5 h-5 text-muted-foreground" />
+                          <Input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            type="password"
+                            placeholder="••••••••"
+                            value={passwordData.confirmPassword}
+                            onChange={handlePasswordChange}
+                            className={`h-12 text-base pl-10 ${
+                              passwordErrors.confirmPassword
+                                ? "border-destructive"
+                                : ""
+                            }`}
+                          />
+                        </div>
+                        {passwordErrors.confirmPassword && (
+                          <p className="text-destructive text-sm">
+                            {passwordErrors.confirmPassword}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-4 pt-4">
+                        <Button
+                          type="submit"
+                          disabled={passwordLoading}
+                          className="flex-1 bg-primary hover:bg-primary/90 h-12 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {passwordLoading ? "Đang xử lý..." : "Lưu mật khẩu mới"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setShowChangePassword(false);
+                            setPasswordMessage("");
+                            setPasswordSuccess(false);
+                          }}
+                          disabled={passwordLoading}
+                          className="flex-1 h-12 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Hủy
+                        </Button>
+                      </div>
+                    </form>
                   )}
                 </div>
+              </div>
+            )}
 
-                {/* Confirm Password */}
+            {/* Writing Section - Viết bài */}
+            {activeTab === "write" && (
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="confirmPassword"
-                    className="text-base font-medium"
-                  >
-                    Xác nhận mật khẩu
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3.5 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      value={passwordData.confirmPassword}
-                      onChange={handlePasswordChange}
-                      className={`h-12 text-base pl-10 ${
-                        passwordErrors.confirmPassword
-                          ? "border-destructive"
-                          : ""
-                      }`}
-                    />
-                  </div>
-                  {passwordErrors.confirmPassword && (
-                    <p className="text-destructive text-sm">
-                      {passwordErrors.confirmPassword}
+                  <h1 className="text-4xl font-bold text-foreground">Viết bài</h1>
+                  <p className="text-lg text-muted-foreground">
+                    Bắt đầu viết bài viết mới của bạn
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-8">
+                  <div className="text-center py-16">
+                    <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
+                      Sắp có tính năng này
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Tính năng viết bài sẽ sớm được cải thiện
                     </p>
-                  )}
+                  </div>
                 </div>
+              </div>
+            )}
 
-                {/* Action Buttons */}
-                <div className="flex gap-4 pt-4">
-                  <Button
-                    type="submit"
-                    disabled={passwordLoading}
-                    className="flex-1 bg-primary hover:bg-primary/90 h-12 text-base disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {passwordLoading ? "Đang xử lý..." : "Lưu mật khẩu mới"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setShowChangePassword(false);
-                      setPasswordMessage("");
-                      setPasswordSuccess(false);
-                    }}
-                    disabled={passwordLoading}
-                    className="flex-1 h-12 text-base disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Hủy
-                  </Button>
+            {/* Batch Writing Section - Viết hàng loạt */}
+            {activeTab === "batch" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold text-foreground">
+                    Viết hàng loạt
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Tạo nhiều bài viết cùng lúc
+                  </p>
                 </div>
-              </form>
+                <div className="bg-white rounded-2xl border border-border p-8">
+                  <div className="text-center py-16">
+                    <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
+                      Sắp có tính năng này
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Tính năng viết hàng loạt sẽ sớm được cải thiện
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Rewrite Section - Viết lại */}
+            {activeTab === "rewrite" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold text-foreground">Viết lại</h1>
+                  <p className="text-lg text-muted-foreground">
+                    Viết lại bài viết hiện có
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-8">
+                  <div className="text-center py-16">
+                    <Sparkles className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
+                      Sắp có tính năng này
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Tính năng viết lại sẽ sớm được cải thiện
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Auto-blogging Section */}
+            {activeTab === "auto-blog" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold text-foreground">
+                    Tự động viết blog
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    AI sẽ tự động tạo bài viết từ những chủ đề bạn chỉ định
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-8">
+                  <div className="text-center py-16">
+                    <ZapIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
+                      Sắp có tính năng này
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Tính năng tự động viết blog sẽ sớm được cải thiện
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Optimize Section */}
+            {activeTab === "optimize" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold text-foreground">
+                    Tối ưu bài viết
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Cải thiện SEO và chất lượng bài viết
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-8">
+                  <div className="text-center py-16">
+                    <TrendingUp className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
+                      Sắp có tính năng này
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Tính năng tối ưu bài viết sẽ sớm được cải thiện
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Articles Section */}
+            {activeTab === "articles" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold text-foreground">
+                    Tất cả bài viết
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Quản lý tất cả bài viết của bạn
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-8">
+                  <div className="text-center py-16">
+                    <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
+                      Sắp có tính năng này
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Tính năng quản lý bài viết sẽ sớm được cải thiện
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Auto-indexing Section */}
+            {activeTab === "auto-index" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold text-foreground">
+                    Tự động Index
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Nộp URL tự động cho Google, Bing...
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-8">
+                  <div className="text-center py-16">
+                    <ZapIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
+                      Sắp có tính năng này
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Tính năng tự động index sẽ sớm được cải thiện
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Website Config Section */}
+            {activeTab === "website" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold text-foreground">
+                    Cấu hình Website
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Tùy chỉnh website của bạn
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-8">
+                  <div className="text-center py-16">
+                    <Settings className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
+                      Sắp có tính năng này
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Tính năng cấu hình website sẽ sớm được cải thiện
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Knowledge Config Section */}
+            {activeTab === "knowledge" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold text-foreground">
+                    Quản lý Kiến thức
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Quản lý cơ sở dữ liệu kiến thức
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-8">
+                  <div className="text-center py-16">
+                    <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
+                      Sắp có tính năng này
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Tính năng quản lý kiến thức sẽ sớm được cải thiện
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
