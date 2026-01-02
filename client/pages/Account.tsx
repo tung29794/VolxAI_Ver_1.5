@@ -357,6 +357,43 @@ export default function Account() {
     }
   };
 
+  const handleWriteFormSubmit = async (formData: any) => {
+    try {
+      setIsGenerating(true);
+      setGenerationFormData(formData);
+
+      // In production, this would call the API to generate the article
+      // For now, we'll simulate the process
+      // const token = localStorage.getItem("authToken");
+      // const response = await fetch(buildApiUrl("/api/articles/generate"), {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     Authorization: `Bearer ${token}`,
+      //   },
+      //   body: JSON.stringify(formData),
+      // });
+    } catch (error) {
+      console.error("Generation failed:", error);
+      toast.error("Có lỗi xảy ra khi tạo bài viết");
+      setIsGenerating(false);
+    }
+  };
+
+  const handleGenerationComplete = (articleId: string) => {
+    setIsGenerating(false);
+    setGenerationFormData(null);
+    setActiveWritingFeature(null);
+
+    // Redirect to article editor
+    navigate(`/article/${articleId}`);
+  };
+
+  const handleGenerationCancel = () => {
+    setIsGenerating(false);
+    setGenerationFormData(null);
+  };
+
   const handleSaveFullName = async () => {
     try {
       setFullNameLoading(true);
