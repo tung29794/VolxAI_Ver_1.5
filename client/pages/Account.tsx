@@ -52,6 +52,8 @@ export default function Account() {
     config: false,
   });
 
+  const [activeWritingFeature, setActiveWritingFeature] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
