@@ -1469,14 +1469,21 @@ export default function Account() {
                     Cải thiện SEO và chất lượng bài viết
                   </p>
                 </div>
-                <div className="bg-white rounded-2xl border border-border p-8">
-                  <div className="text-center py-16">
-                    <TrendingUp className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <h2 className="text-2xl font-bold text-foreground mb-2">
-                      Sắp có tính năng này
-                    </h2>
-                    <p className="text-muted-foreground">
-                      Tính năng tối ưu bài viết sẽ sớm được cải thiện
+
+                {/* Optimization Features Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Dùng Google Search Console */}
+                  <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                        <TrendingUp className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Dùng Google Search Console
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Phân tích số lượng hiển thị, click, từ khóa để tối ưu bài cũ
                     </p>
                   </div>
                 </div>
