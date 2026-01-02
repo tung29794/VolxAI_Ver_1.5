@@ -4,6 +4,48 @@ import jwt from "jsonwebtoken";
 
 const router = Router();
 
+// Middleware to verify user token
+async function verifyUser(req: Request, res: Response): Promise<boolean> {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+      res.status(401).json({
+        success: false,
+        message: "No token provided",
+      });
+      return false;
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "your-secret-key",
+    ) as { userId: number };
+
+    const user = await queryOne<any>(
+      "SELECT id FROM users WHERE id = ?",
+      [decoded.userId],
+    );
+
+    if (!user) {
+      res.status(403).json({
+        success: false,
+        message: "User not found",
+      });
+      return false;
+    }
+
+    (req as any).userId = decoded.userId;
+    return true;
+  } catch (error) {
+    res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    });
+    return false;
+  }
+}
+
 interface RewriteRequest {
   text: string;
   style:
