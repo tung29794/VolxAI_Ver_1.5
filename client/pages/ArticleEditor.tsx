@@ -947,6 +947,63 @@ export default function ArticleEditor() {
                                 placeholder="Tùy chọn giới thiệu trên Serp"
                               />
                             </div>
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <Label
+                                  htmlFor="featured-image"
+                                  className="font-semibold text-base"
+                                >
+                                  Ảnh đại diện
+                                </Label>
+                              </div>
+                              {featuredImage && (
+                                <div className="mb-3 relative">
+                                  <img
+                                    src={featuredImage}
+                                    alt="Featured"
+                                    className="w-full h-40 object-cover rounded-lg border border-gray-200"
+                                  />
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="absolute top-2 right-2"
+                                    onClick={() => setFeaturedImage("")}
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              )}
+                              <Input
+                                id="featured-image"
+                                type="url"
+                                value={featuredImage}
+                                onChange={(e) =>
+                                  setFeaturedImage(e.target.value)
+                                }
+                                placeholder="Nhập URL ảnh đại diện hoặc tải lên"
+                                className="mb-2"
+                              />
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader =
+                                      new FileReader();
+                                    reader.onload = (event) => {
+                                      const result = event.target
+                                        ?.result as string;
+                                      setFeaturedImage(result);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                              <p className="text-xs text-gray-500 mt-2">
+                                Hoặc tải lên một hình ảnh từ máy tính
+                              </p>
+                            </div>
                           </div>
                           <DialogFooter>
                             <Button
