@@ -7,6 +7,7 @@ import { adminRouter } from "./routes/admin";
 import { featuresRouter } from "./routes/features";
 import { aiRouter } from "./routes/ai";
 import { articlesRouter } from "./routes/articles";
+import { apiKeysRouter } from "./routes/api-keys";
 import { testDatabaseConnection } from "./db";
 
 export async function createServer() {
