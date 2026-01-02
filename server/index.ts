@@ -6,6 +6,7 @@ import { authRouter } from "./routes/auth";
 import { adminRouter } from "./routes/admin";
 import { featuresRouter } from "./routes/features";
 import { aiRouter } from "./routes/ai";
+import { articlesRouter } from "./routes/articles";
 import { testDatabaseConnection } from "./db";
 
 export async function createServer() {
