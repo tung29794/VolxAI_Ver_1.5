@@ -1144,24 +1144,38 @@ export default function Account() {
             {/* Writing Section - Viết bài */}
             {activeTab === "write" && (
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h1 className="text-4xl font-bold text-foreground">
-                        Viết bài bằng AI
-                      </h1>
-                      <p className="text-lg text-muted-foreground">
-                        Sử dụng AI để viết bài viết với nhiều tùy chọn
-                      </p>
-                    </div>
-                    <div className="px-4 py-2 bg-red-100 text-red-700 rounded-full text-sm font-medium">
-                      Cách sử dụng
-                    </div>
-                  </div>
-                </div>
+                {activeWritingFeature === "keyword" && (
+                  <button
+                    onClick={() => setActiveWritingFeature(null)}
+                    className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="font-medium">Quay lại</span>
+                  </button>
+                )}
 
-                {/* Writing Features Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activeWritingFeature === "keyword" ? (
+                  <WriteByKeywordForm />
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h1 className="text-4xl font-bold text-foreground">
+                            Viết bài bằng AI
+                          </h1>
+                          <p className="text-lg text-muted-foreground">
+                            Sử dụng AI để viết bài viết với nhiều tùy chọn
+                          </p>
+                        </div>
+                        <div className="px-4 py-2 bg-red-100 text-red-700 rounded-full text-sm font-medium">
+                          Cách sử dụng
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Writing Features Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Viết theo từ khóa */}
                   <button
                     onClick={() => setActiveWritingFeature("keyword")}
@@ -1299,7 +1313,9 @@ export default function Account() {
                       Chuyển nội dung Facebook Post thành bài viết
                     </p>
                   </div>
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
