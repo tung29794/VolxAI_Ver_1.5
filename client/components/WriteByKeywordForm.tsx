@@ -161,7 +161,7 @@ export default function WriteByKeywordForm() {
     outlineType: "no-outline",
     outlineLength: "medium",
     customOutline: "",
-    aiOutlineStyle: "SEO Basic",
+    aiOutlineStyle: "seo-basic",
     tone: "SEO Basic: Tập trung vào từ khóa - Tốt nhất khi từ khóa là dạng câu hỏi 🔥",
     model: "GPT 4.1 MINI",
   });
