@@ -515,63 +515,6 @@ Keyword_3|Link_3`}
             )}
           </div>
 
-          {/* Website Posting Option */}
-          <div className="border-t border-border pt-6 space-y-4">
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">
-                Đăng lên website (Tùy chọn)
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Bạn có thể tùy chỉnh kiến thức và phương cách viết của AI cho từng website. Bấm{" "}
-                <span className="text-primary font-semibold cursor-pointer">Cài đặt</span>
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {supportedPlatforms.map((platform) => (
-                <button
-                  key={platform.name}
-                  type="button"
-                  onClick={() =>
-                    setSelectedWebsite(
-                      selectedWebsite === platform.name ? null : platform.name,
-                    )
-                  }
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    selectedWebsite === platform.name
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{platform.icon}</div>
-                  <div className="text-xs font-medium text-center">
-                    {platform.name}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {selectedWebsite && (
-              <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <Label className="text-sm font-semibold">
-                  Chọn website {selectedWebsite}
-                </Label>
-                <select
-                  name="website"
-                  value={formData.website}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-border rounded-lg bg-white text-sm focus:outline-none focus:border-primary"
-                >
-                  <option value="">-- Chọn website --</option>
-                  <option value="website1">Website 1</option>
-                  <option value="website2">Website 2</option>
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  Nội dung sẽ được tự động đăng lên website đã chọn
-                </p>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Action Buttons */}
