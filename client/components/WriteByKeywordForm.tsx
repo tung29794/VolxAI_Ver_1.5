@@ -75,16 +75,6 @@ const aiOutlineOptions = [
   "Random",
 ];
 
-const supportedPlatforms = [
-  { name: "WordPress.org", icon: "🔷" },
-  { name: "Haravan", icon: "🟢" },
-  { name: "Sapo", icon: "🔵" },
-  { name: "Shopify", icon: "💚" },
-  { name: "Blogger", icon: "🟠" },
-  { name: "WordPress.com", icon: "⚫" },
-  { name: "WIX", icon: "⬜" },
-];
-
 const models = [
   "GPT 4.1 MINI",
   "GPT 5",
