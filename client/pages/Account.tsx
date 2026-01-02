@@ -1173,7 +1173,7 @@ export default function Account() {
                     </p>
                   </div>
 
-                  {/* Viết bài ngoài ngôn */}
+                  {/* Viết bài ngắn gọn */}
                   <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
@@ -1181,10 +1181,10 @@ export default function Account() {
                       </div>
                     </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết bài ngoài ngôn
+                      Viết bài ngắn gọn
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Bài viết ngoài ngôn từ 1,200 tứ, tập trung vào ý tưởng chính
+                      Bài viết ngắn khoảng 1.200 từ, tập trung vào từ khóa chính
                     </p>
                   </div>
 
@@ -1218,7 +1218,7 @@ export default function Account() {
                     </p>
                   </div>
 
-                  {/* Viết theo dạng 2 */}
+                  {/* Viết theo dàn ý */}
                   <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
@@ -1226,10 +1226,10 @@ export default function Account() {
                       </div>
                     </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Viết theo dạng 2
+                      Viết theo dàn ý
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Dạy trên dạn ý của bài viết và đã chính xác cao
+                      Dựa trên dàn ý của bạn, viết bài với độ chính xác cao
                     </p>
                   </div>
 
