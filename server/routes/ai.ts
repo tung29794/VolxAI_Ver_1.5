@@ -471,6 +471,7 @@ Use proper formatting with headings (h2, h3) and paragraphs.`;
       articleId: (result as any).insertId,
       title,
       slug,
+      content,
     });
   } catch (error) {
     console.error("Error generating article:", error);
