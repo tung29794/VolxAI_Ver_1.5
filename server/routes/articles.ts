@@ -138,6 +138,29 @@ async function downloadImageFromUrl(imageUrl: string): Promise<string> {
   }
 }
 
+// Helper function to parse keywords from comma-separated string
+// Input: "điện thoại iphone, iphone 15, iphone 16, iphone 17"
+// Output: ["điện thoại iphone", "iphone 15", "iphone 16", "iphone 17"]
+function parseKeywords(keywordsInput: string | string[]): string[] {
+  if (Array.isArray(keywordsInput)) {
+    // If already an array, process each item (in case some items are comma-separated)
+    return keywordsInput
+      .flatMap(item => 
+        item.split(',').map(kw => kw.trim()).filter(kw => kw.length > 0)
+      );
+  }
+  
+  if (typeof keywordsInput === 'string') {
+    // Split by comma and trim whitespace
+    return keywordsInput
+      .split(',')
+      .map(kw => kw.trim())
+      .filter(kw => kw.length > 0);
+  }
+  
+  return [];
+}
+
 // Helper function to process images in HTML content
 async function processImagesInContent(content: string, isAdmin: boolean): Promise<string> {
   if (!isAdmin) {
@@ -233,6 +256,11 @@ const handleSaveArticle: RequestHandler = async (req, res) => {
       return;
     }
 
+    // Parse keywords - split by comma and trim whitespace
+    const parsedKeywords = parseKeywords(keywords);
+    console.log("[handleSaveArticle] Original keywords:", keywords);
+    console.log("[handleSaveArticle] Parsed keywords:", parsedKeywords);
+
     // If updating, check if article exists and belongs to user
     if (id) {
       const existingArticle = await query<any>(
@@ -281,7 +309,7 @@ const handleSaveArticle: RequestHandler = async (req, res) => {
           metaTitle || title,
           metaDescription,
           slug,
-          JSON.stringify(keywords),
+          JSON.stringify(parsedKeywords),
           featuredImage || null,
           status,
           status,
@@ -329,7 +357,7 @@ const handleSaveArticle: RequestHandler = async (req, res) => {
           metaTitle || title,
           metaDescription,
           slug,
-          JSON.stringify(keywords),
+          JSON.stringify(parsedKeywords),
           featuredImage || null,
           status,
           status,

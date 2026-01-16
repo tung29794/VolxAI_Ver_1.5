@@ -18,8 +18,8 @@ echo "   scp -P $PORT lisa-content-app-plugin/includes/class-api-handler.php \\"
 echo "       $USER@$HOST:~/public_html/wp-content/plugins/article-writer-publisher/includes/"
 echo ""
 echo "2️⃣  Upload Backend:"
-echo "   scp -P $PORT -r dist/server/* \\"
-echo "       $USER@$HOST:~/api.volxai.com/dist/server/"
+echo "   scp -P $PORT dist/server/node-build.mjs \\"
+echo "       $USER@$HOST:~/api.volxai.com/"
 echo ""
 echo "3️⃣  Upload Frontend:"
 echo "   scp -P $PORT -r dist/spa/* \\"
@@ -49,8 +49,8 @@ fi
 # Step 2: Backend
 echo ""
 echo "📤 Step 2: Uploading Backend..."
-scp -P $PORT -r dist/server/* \
-    $USER@$HOST:~/api.volxai.com/dist/server/
+scp -P $PORT dist/server/node-build.mjs \
+    $USER@$HOST:~/api.volxai.com/
 
 if [ $? -eq 0 ]; then
     echo "✅ Backend uploaded successfully"

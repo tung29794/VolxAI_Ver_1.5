@@ -14,7 +14,7 @@ import { websitesRouter } from "./routes/websites";
 import adminUsersRouter from "./routes/adminUsers";
 import batchJobsRouter from "./routes/batchJobs";
 import { testDatabaseConnection } from "./db";
-import { startBatchJobWorker } from "./workers/batchJobProcessor";
+import { startBatchWriteProcessor } from "./workers/batchWriteProcessor";
 
 export async function createServer() {
   const app = express();
@@ -25,10 +25,10 @@ export async function createServer() {
     dbConnected ? "✓ Database connected" : "✗ Database connection failed",
   );
 
-  // Start batch job worker (runs every 5 seconds)
+  // Start batch write processor (runs every 5 seconds)
   if (dbConnected) {
-    startBatchJobWorker(5000);
-    console.log("✓ Batch job worker started");
+    startBatchWriteProcessor(5000);
+    console.log("✓ Batch write processor started");
   }
 
   // Middleware

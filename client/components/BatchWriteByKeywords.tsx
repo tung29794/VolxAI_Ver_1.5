@@ -141,6 +141,9 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
     }
   }, [formData.websiteId, websites]);
 
+  // Parse keywords: mỗi dòng = 1 bài
+  // Input: "từ1, từ2, từ3\nkeyword1, keyword2"
+  // Output: ["từ1, từ2, từ3", "keyword1, keyword2"]
   const parseKeywordsList = (text: string): string[] => {
     const lines = text.split('\n').filter(line => line.trim() !== '');
     return lines;
@@ -156,9 +159,9 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
       return;
     }
 
-    const keywords = parseKeywordsList(formData.keywordsList);
+    const keywordLines = parseKeywordsList(formData.keywordsList);
     
-    if (keywords.length === 0) {
+    if (keywordLines.length === 0) {
       toast({
         title: "Lỗi",
         description: "Không tìm thấy từ khóa hợp lệ",
@@ -167,10 +170,10 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
       return;
     }
 
-    if (keywords.length > 100) {
+    if (keywordLines.length > 100) {
       toast({
         title: "Lỗi",
-        description: "Tối đa 100 từ khóa. Bạn đã nhập " + keywords.length,
+        description: "Tối đa 100 bài. Bạn đã nhập " + keywordLines.length,
         variant: "destructive",
       });
       return;
@@ -185,7 +188,7 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
         return;
       }
 
-      // Create batch job via API
+      // Create batch job via API - gửi keyword lines (mỗi line là 1 bài)
       const response = await fetch(buildApiUrl("/api/batch-jobs"), {
         method: "POST",
         headers: {
@@ -194,7 +197,7 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
         },
         body: JSON.stringify({
           job_type: "batch_keywords",
-          keywords: keywords,
+          keywords: keywordLines,  // Array các dòng: ["từ1, từ2", "từ3, từ4"]
           settings: {
             model: formData.useGoogleSearch ? "gemini-2.5-flash" : formData.model,
             language: formData.language,
@@ -219,7 +222,7 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
 
       toast({
         title: "Thành công",
-        description: `Đã tạo batch job với ${keywords.length} bài viết. Hệ thống đang xử lý...`,
+        description: `Đã tạo ${keywordLines.length} bài viết. Hệ thống đang xử lý...`,
       });
 
       // Navigate to batch jobs tab

@@ -38,7 +38,7 @@ fi
 
 # Copy the compiled server files
 echo "Uploading server files..."
-sshpass -p "$SSH_PASSWORD" scp -P $SSH_PORT -r dist/server/ $SSH_USER@$SSH_HOST:$REMOTE_PATH/dist/
+sshpass -p "$SSH_PASSWORD" scp -P $SSH_PORT dist/server/node-build.mjs $SSH_USER@$SSH_HOST:$REMOTE_PATH/
 
 # Copy the compiled client files
 echo "Uploading client files..."

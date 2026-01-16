@@ -3178,7 +3178,7 @@ Return JSON:
         
       } else {
         // Use OpenAI for metadata
-        console.log(`🤖 [${requestId}] Using OpenAI to generate metadata...`);
+        console.log(`🤖 [${requestId}] Using OpenAI with model: ${actualModel} to generate metadata...`);
         
         const metadataResponse = await fetch(
           "https://api.openai.com/v1/chat/completions",
@@ -3189,7 +3189,7 @@ Return JSON:
               Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-              model: "gpt-3.5-turbo",
+              model: actualModel,
               messages: [
                 {
                   role: "system",
@@ -5896,26 +5896,46 @@ const handleGenerateNews: RequestHandler = async (req: Request, res: Response): 
       `[${idx + 1}] ${item.title}\n${item.snippet}\nNguồn: ${item.source} - ${item.date}`
     ).join('\n\n');
 
-    // Step 4.5: Get OpenAI API key from database
-    console.log(`[${requestId}] 🔑 Step 4.5: Getting OpenAI API key from database...`);
-    const openaiKeyRows = await query(
-      'SELECT api_key FROM api_keys WHERE provider = ? AND category = ? AND is_active = TRUE LIMIT 1',
-      ['openai', 'content']
-    );
+    // Step 4.5: Get API key from database based on selected model
+    console.log(`[${requestId}] 🔑 Step 4.5: Getting API key for model: ${model}`);
     
-    console.log(`[${requestId}] 🔍 OpenAI API key query result:`, {
-      rowsFound: openaiKeyRows.length,
-      hasApiKey: openaiKeyRows.length > 0 && !!openaiKeyRows[0]?.api_key
-    });
+    // Determine provider based on model
+    let selectedProvider = 'openai';
+    let selectedApiKey: string;
     
-    if (openaiKeyRows.length === 0) {
-      console.error(`[${requestId}] ❌ OpenAI API key not found in database!`);
-      console.error(`[${requestId}] 💡 Debug: Check if api_keys table has: provider='openai', category='content', is_active=TRUE`);
-      throw new Error('OpenAI API key not found in database');
+    if (model && (model.startsWith('gemini') || model.includes('gemini'))) {
+      selectedProvider = 'google-ai';
+      console.log(`[${requestId}] 🤖 Model is Gemini, looking for Google AI API key`);
+      
+      const geminiKeyRows = await query(
+        'SELECT api_key FROM api_keys WHERE provider = ? AND category = ? AND is_active = TRUE LIMIT 1',
+        ['google-ai', 'content']
+      );
+      
+      if (geminiKeyRows.length === 0) {
+        console.error(`[${requestId}] ❌ Google AI (Gemini) API key not found in database!`);
+        throw new Error('Google AI (Gemini) API key not found in database');
+      }
+      
+      selectedApiKey = geminiKeyRows[0].api_key;
+      console.log(`[${requestId}] ✅ Retrieved Google AI API key: ${selectedApiKey.substring(0, 10)}...`);
+    } else {
+      selectedProvider = 'openai';
+      console.log(`[${requestId}] 🤖 Model is OpenAI (${model}), looking for OpenAI API key`);
+      
+      const openaiKeyRows = await query(
+        'SELECT api_key FROM api_keys WHERE provider = ? AND category = ? AND is_active = TRUE LIMIT 1',
+        ['openai', 'content']
+      );
+      
+      if (openaiKeyRows.length === 0) {
+        console.error(`[${requestId}] ❌ OpenAI API key not found in database!`);
+        throw new Error('OpenAI API key not found in database');
+      }
+      
+      selectedApiKey = openaiKeyRows[0].api_key;
+      console.log(`[${requestId}] ✅ Retrieved OpenAI API key: ${selectedApiKey.substring(0, 10)}...`);
     }
-    
-    const openaiApiKey = openaiKeyRows[0].api_key;
-    console.log(`[${requestId}] ✅ Retrieved OpenAI API key: ${openaiApiKey.substring(0, 10)}...`);
 
     // Step 5: Generate article title using AI
     sendSSE('progress', { progress: 40, message: 'Đang tạo tiêu đề...' });
@@ -5944,33 +5964,57 @@ Return ONLY the title, nothing else.`; // Fallback
 
     console.log(`[${requestId}] 📝 Step 5.1: Generating article title...`);
     console.log(`[${requestId}] Using prompt template: ${titlePromptTemplate ? 'from database' : 'fallback'}`);
+    console.log(`[${requestId}] Using provider: ${selectedProvider}, model: ${model}`);
     
     let articleTitle = '';
-    const titleResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: titlePrompt }],
-        temperature: 0.8,
-        max_tokens: 100
-      })
-    });
-
-    console.log(`[${requestId}] 🌐 OpenAI title response status: ${titleResponse.status} ${titleResponse.statusText}`);
     
-    if (titleResponse.ok) {
-      const titleData = await titleResponse.json();
-      articleTitle = titleData.choices[0]?.message?.content?.trim() || keyword;
-      console.log(`[${requestId}] ✅ Generated title: "${articleTitle}"`);
+    if (selectedProvider === 'google-ai') {
+      // Use Gemini for title generation
+      console.log(`[${requestId}] 🤖 Using Gemini to generate title...`);
+      
+      try {
+        // @ts-expect-error - GoogleGenerativeAI may not be installed
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const genAI = new GoogleGenerativeAI(selectedApiKey);
+        const geminiModel = genAI.getGenerativeModel({ model });
+
+        const titleResult = await geminiModel.generateContent(titlePrompt);
+        const titleText = titleResult.response.text();
+        articleTitle = titleText.trim() || keyword;
+        console.log(`[${requestId}] ✅ Generated title via Gemini: "${articleTitle}"`);
+      } catch (error) {
+        console.error(`[${requestId}] ❌ Gemini title generation failed:`, error);
+        articleTitle = keyword;
+        console.log(`[${requestId}] ⚠️ Using fallback title: "${articleTitle}"`);
+      }
     } else {
-      const errorText = await titleResponse.text();
-      console.error(`[${requestId}] ❌ OpenAI title generation failed:`, errorText);
-      articleTitle = keyword; // Fallback
-      console.log(`[${requestId}] ⚠️ Using fallback title: "${articleTitle}"`);
+      // Use OpenAI for title generation
+      const titleResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${selectedApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: 'user', content: titlePrompt }],
+          temperature: 0.8,
+          max_tokens: 100
+        })
+      });
+
+      console.log(`[${requestId}] 🌐 OpenAI title response status: ${titleResponse.status} ${titleResponse.statusText}`);
+      
+      if (titleResponse.ok) {
+        const titleData = await titleResponse.json();
+        articleTitle = titleData.choices[0]?.message?.content?.trim() || keyword;
+        console.log(`[${requestId}] ✅ Generated title via OpenAI: "${articleTitle}"`);
+      } else {
+        const errorText = await titleResponse.text();
+        console.error(`[${requestId}] ❌ OpenAI title generation failed:`, errorText);
+        articleTitle = keyword; // Fallback
+        console.log(`[${requestId}] ⚠️ Using fallback title: "${articleTitle}"`);
+      }
     }
 
     console.log(`[${requestId}] Final article title: ${articleTitle}`);
@@ -6028,6 +6072,7 @@ Write the complete article content now (without repeating the title):`; // Fallb
       console.log(`[${requestId}] Retrieved Gemini API key from database`);
       
       // Use Gemini with Google Search capability
+      // @ts-expect-error - GoogleGenerativeAI may not be installed
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(geminiApiKey);
       const geminiModel = genAI.getGenerativeModel({ 
@@ -6050,7 +6095,7 @@ Write the complete article content now (without repeating the title):`; // Fallb
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
+          'Authorization': `Bearer ${selectedApiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -6084,11 +6129,11 @@ Write the complete article content now (without repeating the title):`; // Fallb
     const seoTitleResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${selectedApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: model,
         messages: [{ role: 'user', content: seoTitlePrompt }],
         temperature: 0.7,
         max_tokens: 80
@@ -6113,11 +6158,11 @@ Write the complete article content now (without repeating the title):`; // Fallb
     const metaResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${selectedApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: model,
         messages: [{ role: 'user', content: metaPrompt }],
         temperature: 0.7,
         max_tokens: 100

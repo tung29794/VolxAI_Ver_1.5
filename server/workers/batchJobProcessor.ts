@@ -1,5 +1,6 @@
 import { query, execute } from "../db";
 import { generateCompleteArticle } from "../services/articleGenerationService";
+import * as aiService from "../services/aiService";
 
 interface BatchJob {
   id: number;
@@ -111,12 +112,31 @@ async function processJob(job: BatchJob) {
       articleIds = [];
     }
 
-    const { keywords, settings } = jobData;
+    // Get articles data from job data
+    let articleLines: string[] = [];
+    
+    if ((jobData as any).keywords && Array.isArray((jobData as any).keywords)) {
+      // Keywords format: ["từ1, từ2, từ3", "từ4, từ5"]
+      articleLines = (jobData as any).keywords;
+    } else {
+      await markJobAsFailed(job.id, "Invalid job data: no keywords");
+      return;
+    }
+
+    const { settings } = jobData;
     const startIndex = job.current_item_index || 0;
 
-    // Process each keyword sequentially
-    for (let i = startIndex; i < keywords.length; i++) {
-      const keyword = keywords[i];
+    // Process each keyword line sequentially
+    for (let i = startIndex; i < articleLines.length; i++) {
+      const keywordLine = articleLines[i];
+      
+      // Parse keywords from the line: "từ1, từ2, từ3" -> ["từ1", "từ2", "từ3"]
+      const parsedKeywords = keywordLine
+        .split(',')
+        .map(kw => kw.trim())
+        .filter(kw => kw.length > 0);
+      
+      const primaryKeyword = parsedKeywords[0] || keywordLine;
 
       // Check if job was paused or cancelled
       const currentJob = await query<BatchJob>(
@@ -159,7 +179,7 @@ async function processJob(job: BatchJob) {
         await pauseJobWithError(
           job.id,
           i,
-          `Insufficient tokens. Job paused at keyword ${i + 1}/${keywords.length}.`
+          `Insufficient tokens. Job paused at article ${i + 1}/${articleLines.length}.`
         );
         console.log(`[BatchWorker] Job #${job.id} paused - out of tokens`);
         return;
@@ -169,17 +189,28 @@ async function processJob(job: BatchJob) {
         await pauseJobWithError(
           job.id,
           i,
-          `Article limit reached. Job paused at keyword ${i + 1}/${keywords.length}.`
+          `Article limit reached. Job paused at article ${i + 1}/${articleLines.length}.`
         );
         console.log(`[BatchWorker] Job #${job.id} paused - article limit reached`);
         return;
       }
 
-      // Process this keyword
+      // Process this article according to new workflow
       try {
-        console.log(`[BatchWorker] Processing keyword ${i + 1}/${keywords.length}: "${keyword}"`);
+        console.log(`\n📝 [BatchWorker] Processing article ${i + 1}/${articleLines.length}`);
+        console.log(`   Keyword line: "${keywordLine}"`);
+        console.log(`   Keywords: ${JSON.stringify(parsedKeywords)}`);
+        console.log(`   Primary keyword: "${primaryKeyword}"`);
 
-        const result = await createArticle(job.user_id, keyword, i, settings);
+        const result = await createArticleWithNewWorkflow(
+          job.user_id, 
+          {
+            keywordLine: keywordLine,
+            keywords: parsedKeywords
+          },
+          i, 
+          settings
+        );
 
         if (result && result.articleId) {
           const { articleId, tokensUsed } = result;
@@ -197,7 +228,7 @@ async function processJob(job: BatchJob) {
             [i + 1, i + 1, JSON.stringify(articleIds), tokensUsed, job.id]
           );
 
-          console.log(`[BatchWorker] Successfully created article #${articleId} for keyword "${keyword}" (${tokensUsed} tokens)`);
+          console.log(`✅ [BatchWorker] Successfully created article #${articleId} (${tokensUsed} tokens)`);
         } else {
           // Article creation failed, increment failed count
           await execute(
@@ -209,10 +240,10 @@ async function processJob(job: BatchJob) {
             [i + 1, job.id]
           );
 
-          console.log(`[BatchWorker] Failed to create article for keyword "${keyword}"`);
+          console.log(`❌ [BatchWorker] Failed to create article`);
         }
       } catch (error: any) {
-        console.error(`[BatchWorker] Error processing keyword "${keyword}":`, error);
+        console.error(`[BatchWorker] Error processing article:`, error);
 
         // Increment failed count
         await execute(
@@ -246,6 +277,285 @@ async function processJob(job: BatchJob) {
   } finally {
     // Remove from processing set
     processingJobs.delete(job.user_id);
+  }
+}
+
+/**
+ * Create article with new workflow (batch write)
+ * 
+ * STEPS:
+ * 1. Create article record with title = keyword line + status "Đang viết"
+ * 2. Generate SEO Title + Meta Description using AI
+ * 3. Save SEO Title + Meta Description to DB
+ * 4. Generate article content using AI
+ * 5. Save content to DB
+ * 6. Regenerate article title based on primary keyword
+ * 7. Save title to DB
+ */
+async function createArticleWithNewWorkflow(
+  userId: number,
+  articleData: {keywordLine: string, keywords: string[]},
+  articleIndex: number,
+  settings: any
+): Promise<{ articleId: number; tokensUsed: number } | null> {
+  let totalTokensUsed = 0;
+  
+  try {
+    const primaryKeyword = articleData.keywords[0] || articleData.keywordLine;
+    const model = settings.model || 'gpt-4';
+    const language = settings.language || 'vi';
+    
+    console.log(`\n📝 [NewWorkflow] Step 1: Creating article record`);
+    console.log(`   Title: "${articleData.keywordLine} - Đang viết"`);
+    
+    // STEP 1: Create article record in DB
+    const insertResult = await execute(
+      `INSERT INTO articles (
+        user_id, title, content, status, keywords, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        userId,
+        articleData.keywordLine + ' - Đang viết',
+        '',  // Empty content initially
+        'draft',
+        JSON.stringify(articleData.keywords)
+      ]
+    );
+    
+    const articleId = (insertResult as any).insertId;
+    console.log(`✅ [NewWorkflow] Article created with ID: ${articleId}`);
+    
+    // STEP 2: Generate SEO Title
+    console.log(`\n📝 [NewWorkflow] Step 2: Generating SEO Title`);
+    const seoTitleResult = await generateBatchWriteSeoTitle(
+      primaryKeyword,
+      language,
+      userId,
+      model
+    );
+    
+    if (!seoTitleResult.success) {
+      console.error(`❌ [NewWorkflow] Failed to generate SEO Title`);
+      return null;
+    }
+    
+    const seoTitle = seoTitleResult.seoTitle || primaryKeyword;
+    totalTokensUsed += seoTitleResult.tokensUsed || 0;
+    console.log(`✅ [NewWorkflow] SEO Title: "${seoTitle}"`);
+    
+    // STEP 3: Generate Meta Description
+    console.log(`\n📝 [NewWorkflow] Step 3: Generating Meta Description`);
+    const metaDescResult = await generateBatchWriteMetaDescription(
+      primaryKeyword,
+      seoTitle,
+      language,
+      userId,
+      model
+    );
+    
+    if (!metaDescResult.success) {
+      console.error(`❌ [NewWorkflow] Failed to generate Meta Description`);
+      return null;
+    }
+    
+    const metaDescription = metaDescResult.metaDescription || '';
+    totalTokensUsed += metaDescResult.tokensUsed || 0;
+    console.log(`✅ [NewWorkflow] Meta Description: "${metaDescription.substring(0, 80)}..."`);
+    
+    // STEP 4: Save SEO Title + Meta Description to DB
+    console.log(`\n📝 [NewWorkflow] Step 4: Saving metadata to DB`);
+    await execute(
+      `UPDATE articles SET meta_title = ?, meta_description = ? WHERE id = ?`,
+      [seoTitle, metaDescription, articleId]
+    );
+    console.log(`✅ [NewWorkflow] Metadata saved`);
+    
+    // STEP 5: Generate article content
+    console.log(`\n📝 [NewWorkflow] Step 5: Generating article content`);
+    const contentResult = await generateBatchWriteContent(
+      primaryKeyword,
+      seoTitle,
+      language,
+      userId,
+      model
+    );
+    
+    if (!contentResult.success) {
+      console.error(`❌ [NewWorkflow] Failed to generate content`);
+      return null;
+    }
+    
+    const content = contentResult.content || '';
+    totalTokensUsed += contentResult.tokensUsed || 0;
+    console.log(`✅ [NewWorkflow] Content generated (${content.length} chars)`);
+    
+    // STEP 6: Save content to DB
+    console.log(`\n📝 [NewWorkflow] Step 6: Saving content to DB`);
+    await execute(
+      `UPDATE articles SET content = ? WHERE id = ?`,
+      [content, articleId]
+    );
+    console.log(`✅ [NewWorkflow] Content saved`);
+    
+    // STEP 7: Generate final title based on primary keyword
+    console.log(`\n📝 [NewWorkflow] Step 7: Generating final title`);
+    const titleResult = await generateBatchWriteArticleTitle(
+      primaryKeyword,
+      language,
+      userId,
+      model
+    );
+    
+    if (!titleResult.success) {
+      console.error(`❌ [NewWorkflow] Failed to generate title`);
+      return null;
+    }
+    
+    const finalTitle = titleResult.title || primaryKeyword;
+    totalTokensUsed += titleResult.tokensUsed || 0;
+    console.log(`✅ [NewWorkflow] Final title: "${finalTitle}"`);
+    
+    // STEP 8: Save final title to DB + update status
+    console.log(`\n📝 [NewWorkflow] Step 8: Saving final title and updating status`);
+    await execute(
+      `UPDATE articles SET title = ?, status = 'published' WHERE id = ?`,
+      [finalTitle, articleId]
+    );
+    console.log(`✅ [NewWorkflow] Article completed and published`);
+    
+    console.log(`\n✅ [NewWorkflow] Article #${articleId} completed successfully (${totalTokensUsed} total tokens)`);
+    
+    return {
+      articleId,
+      tokensUsed: totalTokensUsed
+    };
+    
+  } catch (error: any) {
+    console.error(`❌ [NewWorkflow] Error:`, error);
+    return null;
+  }
+}
+
+/**
+ * Generate article title using batch_write_article_title prompt
+ */
+async function generateBatchWriteArticleTitle(
+  keyword: string,
+  language: string,
+  userId: number,
+  model: string
+): Promise<{ success: boolean; title?: string; tokensUsed: number }> {
+  try {
+    const result = await aiService.generateBatchWriteArticleTitle(
+      keyword,
+      userId,
+      language,
+      'professional',
+      model
+    );
+    
+    return {
+      success: result.success || false,
+      title: result.title,
+      tokensUsed: result.tokensUsed || 0
+    };
+  } catch (error) {
+    console.error("Error generating title:", error);
+    return { success: false, tokensUsed: 0 };
+  }
+}
+
+/**
+ * Generate SEO title using batch_write_seo_title prompt
+ */
+async function generateBatchWriteSeoTitle(
+  keyword: string,
+  language: string,
+  userId: number,
+  model: string
+): Promise<{ success: boolean; seoTitle?: string; tokensUsed: number }> {
+  try {
+    // Need title for SEO title generation, use keyword as title
+    const result = await aiService.generateBatchWriteSeoTitle(
+      keyword,  // title
+      keyword,  // keyword
+      userId,
+      language,
+      model
+    );
+    
+    return {
+      success: result.success || false,
+      seoTitle: result.seoTitle,
+      tokensUsed: result.tokensUsed || 0
+    };
+  } catch (error) {
+    console.error("Error generating SEO title:", error);
+    return { success: false, tokensUsed: 0 };
+  }
+}
+
+/**
+ * Generate meta description using batch_write_meta_description prompt
+ */
+async function generateBatchWriteMetaDescription(
+  keyword: string,
+  seoTitle: string,
+  language: string,
+  userId: number,
+  model: string
+): Promise<{ success: boolean; metaDescription?: string; tokensUsed: number }> {
+  try {
+    const result = await aiService.generateBatchWriteMetaDescription(
+      seoTitle,  // title
+      keyword,   // keyword
+      userId,
+      language,
+      model
+    );
+    
+    return {
+      success: result.success || false,
+      metaDescription: result.metaDesc,  // Note: property name is metaDesc
+      tokensUsed: result.tokensUsed || 0
+    };
+  } catch (error) {
+    console.error("Error generating meta description:", error);
+    return { success: false, tokensUsed: 0 };
+  }
+}
+
+/**
+ * Generate article content - use standard content generation
+ */
+async function generateBatchWriteContent(
+  keyword: string,
+  seoTitle: string,
+  language: string,
+  userId: number,
+  model: string
+): Promise<{ success: boolean; content?: string; tokensUsed: number }> {
+  try {
+    // Use existing article content generation
+    const result = await aiService.generateArticleContent({
+      keyword,
+      language,
+      userId,
+      model,
+      tone: 'professional',
+      outlineType: 'no-outline',
+      customOutline: '',
+      length: 'medium'
+    });
+    
+    return {
+      success: result.success || false,
+      content: result.content,
+      tokensUsed: result.tokensUsed || 0
+    };
+  } catch (error) {
+    console.error("Error generating content:", error);
+    return { success: false, tokensUsed: 0 };
   }
 }
 

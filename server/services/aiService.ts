@@ -113,37 +113,36 @@ function formatAndSplitParagraphs(htmlContent: string): string {
       continue;
     }
 
-    // Count words (approximate, ignoring HTML tags)
+    // Count characters (not words!) - user requirement is 100 characters per paragraph
     const plainText = text.replace(/<[^>]+>/g, ' ');
-    const words = plainText.split(/\s+/).filter(w => w.length > 0);
-    const wordCount = words.length;
+    const charCount = plainText.length;
 
-    if (wordCount <= 100) {
+    if (charCount <= 100) {
       // Paragraph is fine, just wrap in <p>
       processed.push(`<p>${text}</p>`);
     } else {
-      // Split into multiple paragraphs of ~80-100 words each
-      console.log(`   ⚠️ Long paragraph detected (${wordCount} words), splitting...`);
+      // Split into multiple paragraphs of ~80-100 CHARACTERS each
+      console.log(`   ⚠️ Long paragraph detected (${charCount} characters), splitting...`);
       
+      // Split by sentences first
       const sentences = text.split(/([.!?]+\s+)/);
       let currentParagraph: string[] = [];
-      let currentWordCount = 0;
+      let currentCharCount = 0;
 
       for (let i = 0; i < sentences.length; i++) {
         const sentence = sentences[i].trim();
         if (!sentence) continue;
 
-        const sentenceWords = sentence.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(w => w.length > 0);
-        const sentenceWordCount = sentenceWords.length;
+        const sentenceCharCount = sentence.replace(/<[^>]+>/g, ' ').length;
 
-        if (currentWordCount + sentenceWordCount > 100 && currentParagraph.length > 0) {
+        if (currentCharCount + sentenceCharCount > 100 && currentParagraph.length > 0) {
           // Flush current paragraph
           processed.push(`<p>${currentParagraph.join(' ')}</p>`);
           currentParagraph = [sentence];
-          currentWordCount = sentenceWordCount;
+          currentCharCount = sentenceCharCount;
         } else {
           currentParagraph.push(sentence);
-          currentWordCount += sentenceWordCount;
+          currentCharCount += sentenceCharCount;
         }
       }
 
@@ -252,7 +251,44 @@ async function callAI(
       const data = await response.json();
       console.log(`   Response data:`, JSON.stringify(data, null, 2).substring(0, 500));
       
-      const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      // ✅ FIX #1: Properly extract and clean Gemini response
+      let content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      // If first part is empty, try other parts
+      if (!content && data.candidates?.[0]?.content?.parts?.length > 1) {
+        console.log(`   ℹ️ [callAI] Multiple parts detected (${data.candidates[0].content.parts.length}), merging...`);
+        content = data.candidates[0].content.parts
+          .map((p: any) => p.text || "")
+          .filter((t: any) => t && t.trim())
+          .join(" ");
+        console.log(`   ℹ️ [callAI] Merged content length: ${content.length}`);
+      }
+      
+      // Clean and trim
+      content = content.trim();
+      
+      // Remove markdown-style prefixes
+      if (content.startsWith("**")) {
+        content = content.replace(/^\*\*+/, "").trim();
+      }
+      if (content.startsWith("- ") || content.startsWith("* ")) {
+        content = content.substring(2).trim();
+      }
+      if (content.startsWith("• ")) {
+        content = content.substring(2).trim();
+      }
+      
+      // Check for suspiciously short responses (< 3 chars for titles/descriptions)
+      const isShortResponse = content.length < 3;
+      const isTitleRequest = userPrompt.toLowerCase().includes("title") || userPrompt.toLowerCase().includes("description");
+      if (isShortResponse && isTitleRequest) {
+        console.warn(`⚠️  [callAI] Gemini returned suspiciously short content: "${content}"`);
+        console.error("   Full response:", JSON.stringify(data, null, 2));
+        return {
+          success: false,
+          error: "Gemini returned invalid/empty response",
+        };
+      }
 
       if (!content) {
         console.error("❌ [callAI] No content generated from Google AI");
@@ -267,10 +303,11 @@ async function callAI(
       const tokensUsed = Math.ceil(content.length / 4);
 
       console.log(`✅ [callAI] Google AI success! Generated ${content.length} chars, ~${tokensUsed} tokens`);
+      console.log(`   Cleaned content: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`);
 
       return {
         success: true,
-        content: content.trim(),
+        content: content,
         tokensUsed: tokensUsed,
       };
     } else {
@@ -705,7 +742,11 @@ export async function generateArticleTitle(
     const languageName = language === "vi" ? "Vietnamese" : language;
 
     // Get prompts
-    const systemPrompt = getSystemPrompt("generate_article_title");
+    let systemPrompt = getSystemPrompt("generate_article_title");
+    
+    // ✅ FIX #3: Inject language requirement into system prompt
+    systemPrompt += `\n\n🌍 CRITICAL LANGUAGE REQUIREMENT: ALL output MUST be in ${languageName} language. Do NOT use English or any other language.`;
+    
     const promptTemplate = await loadPrompt("generate_article_title");
 
     let userPrompt = "";
@@ -715,6 +756,8 @@ export async function generateArticleTitle(
         language: languageName,
         tone: tone,
       });
+      // Add language requirement to template too
+      userPrompt += `\n\n⚠️  OUTPUT LANGUAGE: Must be in ${languageName} ONLY`;
     } else {
       // Fallback
       userPrompt = `Generate an engaging article title for the keyword: "${keyword}"
@@ -724,8 +767,9 @@ Requirements:
 - Tone: ${tone}
 - Make it compelling and click-worthy
 - Keep it concise (under 60 characters)
+- ⚠️  OUTPUT MUST BE IN ${languageName.toUpperCase()} ONLY, NOT ENGLISH
 
-Output ONLY the title, nothing else.`;
+Output ONLY the title in ${languageName}, nothing else.`;
     }
 
     // Call AI API (supports both OpenAI and Gemini)
@@ -799,7 +843,11 @@ export async function generateArticleSEOTitle(
     const languageName = language === "vi" ? "Vietnamese" : language;
 
     // Get prompts
-    const systemPrompt = getSystemPrompt("generate_seo_title");
+    let systemPrompt = getSystemPrompt("generate_seo_title");
+    
+    // ✅ FIX #3: Inject language requirement into system prompt
+    systemPrompt += `\n\n🌍 CRITICAL LANGUAGE REQUIREMENT: ALL output MUST be in ${languageName} language. Do NOT use English or any other language.`;
+    
     const promptTemplate = await loadPrompt("generate_seo_title");
 
     let userPrompt = "";
@@ -809,6 +857,8 @@ export async function generateArticleSEOTitle(
         keyword: keyword,
         language: languageName,
       });
+      // Add language requirement to template too
+      userPrompt += `\n\n⚠️  OUTPUT LANGUAGE: Must be in ${languageName} ONLY`;
     } else {
       // Fallback
       userPrompt = `Create an SEO-optimized title for:
@@ -821,8 +871,9 @@ Requirements:
 - Include the target keyword naturally
 - Keep it under 60 characters
 - Make it search engine friendly
+- ⚠️  OUTPUT MUST BE IN ${languageName.toUpperCase()} ONLY, NOT ENGLISH
 
-Output ONLY the SEO title, nothing else.`;
+Output ONLY the SEO title in ${languageName}, nothing else.`;
     }
 
     // Call AI API (supports both OpenAI and Gemini)
@@ -896,7 +947,11 @@ export async function generateArticleMetaDescription(
     const languageName = language === "vi" ? "Vietnamese" : language;
 
     // Get prompts
-    const systemPrompt = getSystemPrompt("generate_meta_description");
+    let systemPrompt = getSystemPrompt("generate_meta_description");
+    
+    // ✅ FIX #3: Inject language requirement into system prompt
+    systemPrompt += `\n\n🌍 CRITICAL LANGUAGE REQUIREMENT: ALL output MUST be in ${languageName} language. Do NOT use English or any other language.`;
+    
     const promptTemplate = await loadPrompt("generate_meta_description");
 
     let userPrompt = "";
@@ -906,6 +961,8 @@ export async function generateArticleMetaDescription(
         keyword: keyword,
         language: languageName,
       });
+      // Add language requirement to template too
+      userPrompt += `\n\n⚠️  OUTPUT LANGUAGE: Must be in ${languageName} ONLY`;
     } else {
       // Fallback
       userPrompt = `Create an SEO-optimized meta description for:
@@ -919,8 +976,9 @@ Requirements:
 - Keep it between 150-160 characters
 - Make it compelling and informative
 - Encourage clicks from search results
+- ⚠️  OUTPUT MUST BE IN ${languageName.toUpperCase()} ONLY, NOT ENGLISH
 
-Output ONLY the meta description, nothing else.`;
+Output ONLY the meta description in ${languageName}, nothing else.`;
     }
 
     // Call AI API (supports both OpenAI and Gemini)
@@ -1397,5 +1455,255 @@ export async function insertImagesIntoArticle(
       success: false,
       error: error.message || "Internal error",
     };
+  }
+}
+
+/**
+ * ============================================================
+ * BATCH WRITE SPECIFIC FUNCTIONS
+ * ============================================================
+ * These functions are ONLY for bulk write feature
+ * They use batch_write_* prompts to avoid affecting other features
+ */
+
+/**
+ * Generate article title for batch write (uses batch_write_article_title prompt)
+ */
+export async function generateBatchWriteArticleTitle(
+  keyword: string,
+  userId: number,
+  language: string = "vi",
+  tone: string = "professional",
+  model: string = "GPT 4"
+): Promise<{ success: boolean; title?: string; tokensUsed?: number; error?: string }> {
+  try {
+    console.log(`📝 [BatchWrite] Generating title for: "${keyword}"`);
+
+    const estimatedTokens = 200;
+    const tokenCheck = await checkTokensMiddleware(userId, estimatedTokens, "GENERATE_TITLE");
+    if (!tokenCheck.allowed) {
+      return {
+        success: false,
+        error: `Insufficient tokens. Required: ${estimatedTokens}, Available: ${tokenCheck.remainingTokens || 0}`,
+      };
+    }
+
+    const modelConfig = await getApiKeyForModel(model, false);
+    if (!modelConfig) {
+      return { success: false, error: "API key not configured" };
+    }
+
+    const { apiKey, provider, actualModel } = modelConfig;
+    const languageName = language === "vi" ? "Vietnamese" : language;
+
+    // ✅ Load batch_write_article_title prompt (NOT generate_article_title)
+    const systemPrompt = getSystemPrompt("batch_write_article_title");
+    const promptTemplate = await loadPrompt("batch_write_article_title");
+
+    let userPrompt = "";
+    if (promptTemplate) {
+      userPrompt = interpolatePrompt(promptTemplate.prompt_template, {
+        keyword: keyword,
+        language: languageName,
+        tone: tone,
+      });
+    } else {
+      userPrompt = `Generate an engaging article title for the keyword: "${keyword}". Language: ${languageName}
+The title should be between 50-60 characters, include the keyword naturally, be compelling.
+Return ONLY the title, without quotes.`;
+    }
+
+    const aiResult = await callAI(
+      provider,
+      apiKey,
+      actualModel,
+      systemPrompt,
+      userPrompt,
+      100,
+      0.7
+    );
+
+    if (!aiResult.success || !aiResult.content) {
+      return { 
+        success: false, 
+        error: aiResult.error || "Failed to generate title"
+      };
+    }
+
+    const title = aiResult.content;
+    const tokensToDeduct = aiResult.tokensUsed || estimatedTokens;
+    await deductTokens(userId, tokensToDeduct, "GENERATE_TITLE");
+
+    console.log(`✅ [BatchWrite] Title generated: "${title}" (${tokensToDeduct} tokens)`);
+    return {
+      success: true,
+      title: title,
+      tokensUsed: tokensToDeduct,
+    };
+  } catch (error: any) {
+    console.error("[BatchWrite] Error generating title:", error);
+    return { success: false, error: error.message || "Internal error" };
+  }
+}
+
+/**
+ * Generate SEO title for batch write (uses batch_write_seo_title prompt)
+ */
+export async function generateBatchWriteSeoTitle(
+  title: string,
+  keyword: string,
+  userId: number,
+  language: string = "vi",
+  model: string = "GPT 4"
+): Promise<{ success: boolean; seoTitle?: string; tokensUsed?: number; error?: string }> {
+  try {
+    console.log(`🔍 [BatchWrite] Generating SEO title for: "${title}"`);
+
+    const estimatedTokens = 200;
+    const tokenCheck = await checkTokensMiddleware(userId, estimatedTokens, "GENERATE_SEO_TITLE");
+    if (!tokenCheck.allowed) {
+      return {
+        success: false,
+        error: `Insufficient tokens. Required: ${estimatedTokens}, Available: ${tokenCheck.remainingTokens || 0}`,
+      };
+    }
+
+    const modelConfig = await getApiKeyForModel(model, false);
+    if (!modelConfig) {
+      return { success: false, error: "API key not configured" };
+    }
+
+    const { apiKey, provider, actualModel } = modelConfig;
+    const languageName = language === "vi" ? "Vietnamese" : language;
+
+    // ✅ Load batch_write_seo_title prompt (NOT generate_seo_title)
+    let systemPrompt = getSystemPrompt("batch_write_seo_title");
+    systemPrompt += `\n\n🌍 CRITICAL LANGUAGE REQUIREMENT: ALL output MUST be in ${languageName} language. Do NOT use English or any other language.`;
+    
+    const promptTemplate = await loadPrompt("batch_write_seo_title");
+
+    let userPrompt = "";
+    if (promptTemplate) {
+      userPrompt = interpolatePrompt(promptTemplate.prompt_template, {
+        keyword: keyword,
+        language: languageName,
+      });
+    } else {
+      userPrompt = `Create an SEO-optimized title for keyword: "${keyword}". Language: ${languageName}
+Must be 50-60 characters, include keyword naturally, search engine friendly.
+Return ONLY the title, nothing else.`;
+    }
+
+    const aiResult = await callAI(
+      provider,
+      apiKey,
+      actualModel,
+      systemPrompt,
+      userPrompt,
+      100,
+      0.7
+    );
+
+    if (!aiResult.success || !aiResult.content) {
+      return { 
+        success: false, 
+        error: aiResult.error || "Failed to generate SEO title"
+      };
+    }
+
+    const seoTitle = aiResult.content;
+    const tokensToDeduct = aiResult.tokensUsed || estimatedTokens;
+    await deductTokens(userId, tokensToDeduct, "GENERATE_SEO_TITLE");
+
+    console.log(`✅ [BatchWrite] SEO title generated: "${seoTitle}" (${tokensToDeduct} tokens)`);
+    return {
+      success: true,
+      seoTitle: seoTitle,
+      tokensUsed: tokensToDeduct,
+    };
+  } catch (error: any) {
+    console.error("[BatchWrite] Error generating SEO title:", error);
+    return { success: false, error: error.message || "Internal error" };
+  }
+}
+
+/**
+ * Generate meta description for batch write (uses batch_write_meta_description prompt)
+ */
+export async function generateBatchWriteMetaDescription(
+  title: string,
+  keyword: string,
+  userId: number,
+  language: string = "vi",
+  model: string = "GPT 4"
+): Promise<{ success: boolean; metaDesc?: string; tokensUsed?: number; error?: string }> {
+  try {
+    console.log(`📄 [BatchWrite] Generating meta description for: "${title}"`);
+
+    const estimatedTokens = 300;
+    const tokenCheck = await checkTokensMiddleware(userId, estimatedTokens, "GENERATE_META_DESC");
+    if (!tokenCheck.allowed) {
+      return {
+        success: false,
+        error: `Insufficient tokens. Required: ${estimatedTokens}, Available: ${tokenCheck.remainingTokens || 0}`,
+      };
+    }
+
+    const modelConfig = await getApiKeyForModel(model, false);
+    if (!modelConfig) {
+      return { success: false, error: "API key not configured" };
+    }
+
+    const { apiKey, provider, actualModel } = modelConfig;
+    const languageName = language === "vi" ? "Vietnamese" : language;
+
+    // ✅ Load batch_write_meta_description prompt (NOT generate_meta_description)
+    let systemPrompt = getSystemPrompt("batch_write_meta_description");
+    systemPrompt += `\n\n🌍 CRITICAL LANGUAGE REQUIREMENT: ALL output MUST be in ${languageName} language. Do NOT use English or any other language.`;
+    
+    const promptTemplate = await loadPrompt("batch_write_meta_description");
+
+    let userPrompt = "";
+    if (promptTemplate) {
+      userPrompt = interpolatePrompt(promptTemplate.prompt_template, {
+        keyword: keyword,
+        language: languageName,
+      });
+    } else {
+      userPrompt = `Create an SEO meta description for keyword: "${keyword}". Language: ${languageName}
+Must be 150-160 characters, include keyword naturally, compelling and informative.
+Return ONLY the description, nothing else.`;
+    }
+
+    const aiResult = await callAI(
+      provider,
+      apiKey,
+      actualModel,
+      systemPrompt,
+      userPrompt,
+      150,
+      0.7
+    );
+
+    if (!aiResult.success || !aiResult.content) {
+      return { 
+        success: false, 
+        error: aiResult.error || "Failed to generate meta description"
+      };
+    }
+
+    const metaDesc = aiResult.content;
+    const tokensToDeduct = aiResult.tokensUsed || estimatedTokens;
+    await deductTokens(userId, tokensToDeduct, "GENERATE_META_DESC");
+
+    console.log(`✅ [BatchWrite] Meta description generated (${tokensToDeduct} tokens)`);
+    return {
+      success: true,
+      metaDesc: metaDesc,
+      tokensUsed: tokensToDeduct,
+    };
+  } catch (error: any) {
+    console.error("[BatchWrite] Error generating meta description:", error);
+    return { success: false, error: error.message || "Internal error" };
   }
 }

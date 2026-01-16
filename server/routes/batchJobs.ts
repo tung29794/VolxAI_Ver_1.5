@@ -205,6 +205,8 @@ router.post("/batch-jobs", authenticateToken, async (req: AuthRequest, res: Resp
     const articlesLimitAtStart = userData.article_limit || 0;
 
     // Create batch job
+    // Keywords format: ["từ1, từ2, từ3", "từ4, từ5"]
+    // Each string will be split by commas in the worker
     const jobData = {
       keywords,
       settings: settings || {},

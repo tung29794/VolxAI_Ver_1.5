@@ -11,7 +11,10 @@ import {
   generateArticleTitle,
   generateArticleSEOTitle,
   generateArticleMetaDescription,
-  generateOutline
+  generateOutline,
+  generateBatchWriteArticleTitle,
+  generateBatchWriteSeoTitle,
+  generateBatchWriteMetaDescription
 } from './aiService';
 import { query as dbQuery, execute as dbExecute } from '../db';
 
@@ -55,9 +58,9 @@ export async function generateCompleteArticle(
   try {
     let totalTokensUsed = 0;
 
-    // STEP 1: Generate article title
-    console.log(`📝 [ArticleGenService] Step 1/5: Generating title...`);
-    const titleResult = await generateArticleTitle(
+    // STEP 1: Generate article title using BATCH WRITE specific function
+    console.log(`📝 [ArticleGenService] Step 1/5: Generating title (Batch Write)...`);
+    const titleResult = await generateBatchWriteArticleTitle(
       options.keyword,
       options.userId,
       options.language,
@@ -78,9 +81,12 @@ export async function generateCompleteArticle(
     totalTokensUsed += titleResult.tokensUsed || 0;
     console.log(`✅ [ArticleGenService] Title generated: "${articleTitle}" (${titleResult.tokensUsed} tokens)`);
 
-    // STEP 2: Generate SEO title
-    console.log(`📝 [ArticleGenService] Step 2/5: Generating SEO title...`);
-    const seoTitleResult = await generateArticleSEOTitle(
+    // STEP 2: Generate SEO title (with fallback) using BATCH WRITE specific function
+    console.log(`📝 [ArticleGenService] Step 2/5: Generating SEO title (Batch Write)...`);
+
+    let seoTitle = articleTitle; // ✅ Default fallback
+    
+    const seoTitleResult = await generateBatchWriteSeoTitle(
       articleTitle,
       options.keyword,
       options.userId,
@@ -88,22 +94,22 @@ export async function generateCompleteArticle(
       options.model
     );
 
-    if (!seoTitleResult.success || !seoTitleResult.seoTitle) {
-      console.error(`❌ [ArticleGenService] Failed to generate SEO title:`, seoTitleResult.error);
-      return {
-        success: false,
-        error: seoTitleResult.error || 'Failed to generate SEO title',
-        tokensUsed: totalTokensUsed
-      };
+    if (seoTitleResult.success && seoTitleResult.seoTitle) {
+      seoTitle = seoTitleResult.seoTitle;
+      totalTokensUsed += seoTitleResult.tokensUsed || 0;
+      console.log(`✅ [ArticleGenService] SEO title generated: "${seoTitle}" (${seoTitleResult.tokensUsed} tokens)`);
+    } else {
+      console.warn(`⚠️  [ArticleGenService] SEO title generation failed: ${seoTitleResult.error}`);
+      console.log(`   Using fallback: "${seoTitle}"`);
+      // Continue with fallback instead of early return
     }
 
-    const seoTitle = seoTitleResult.seoTitle;
-    totalTokensUsed += seoTitleResult.tokensUsed || 0;
-    console.log(`✅ [ArticleGenService] SEO title generated: "${seoTitle}" (${seoTitleResult.tokensUsed} tokens)`);
-
-    // STEP 3: Generate meta description
-    console.log(`📝 [ArticleGenService] Step 3/5: Generating meta description...`);
-    const metaDescResult = await generateArticleMetaDescription(
+    // STEP 3: Generate meta description (with fallback) using BATCH WRITE specific function
+    console.log(`📝 [ArticleGenService] Step 3/5: Generating meta description (Batch Write)...`);
+    // ✅ Smart fallback: use keyword + title
+    let metaDescription = `${options.keyword} - ${articleTitle.substring(0, 100)}`;
+    
+    const metaDescResult = await generateBatchWriteMetaDescription(
       articleTitle,
       options.keyword,
       options.userId,
@@ -111,18 +117,15 @@ export async function generateCompleteArticle(
       options.model
     );
 
-    if (!metaDescResult.success || !metaDescResult.metaDesc) {
-      console.error(`❌ [ArticleGenService] Failed to generate meta description:`, metaDescResult.error);
-      return {
-        success: false,
-        error: metaDescResult.error || 'Failed to generate meta description',
-        tokensUsed: totalTokensUsed
-      };
+    if (metaDescResult.success && metaDescResult.metaDesc) {
+      metaDescription = metaDescResult.metaDesc;
+      totalTokensUsed += metaDescResult.tokensUsed || 0;
+      console.log(`✅ [ArticleGenService] Meta description generated (${metaDescResult.tokensUsed} tokens)`);
+    } else {
+      console.warn(`⚠️  [ArticleGenService] Meta description generation failed: ${metaDescResult.error}`);
+      console.log(`   Using fallback: "${metaDescription}"`);
+      // Continue with fallback instead of early return
     }
-
-    const metaDescription = metaDescResult.metaDesc;
-    totalTokensUsed += metaDescResult.tokensUsed || 0;
-    console.log(`✅ [ArticleGenService] Meta description generated (${metaDescResult.tokensUsed} tokens)`);
 
     // STEP 4: Generate or prepare outline
     let finalOutline = options.customOutline || '';
@@ -171,6 +174,18 @@ export async function generateCompleteArticle(
 
     const articleId = (insertResult as any).insertId;
     console.log(`✅ [ArticleGenService] Article record created with ID: ${articleId}`);
+    
+    // ✅ FIX #2: Verify metadata was saved correctly
+    console.log(`📋 [ArticleGenService] Verifying saved metadata...`);
+    const [savedArticle] = await dbQuery<any>(
+      'SELECT id, seo_title, meta_description FROM articles WHERE id = ?',
+      [articleId]
+    );
+    
+    if (savedArticle) {
+      console.log(`   Saved SEO Title: "${savedArticle.seo_title || '(empty)'}"`);
+      console.log(`   Saved Meta Desc: "${savedArticle.meta_description ? savedArticle.meta_description.substring(0, 50) : '(empty)'}..."`);
+    }
 
     // STEP 6: Generate article content
     console.log(`📝 [ArticleGenService] Step 6/6: Generating article content...`);
