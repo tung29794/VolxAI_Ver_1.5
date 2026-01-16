@@ -25,3 +25,8 @@ dist-ssr
 
 .config/
 !.env
+
+# Test files with sensitive data
+test.py
+test*.py
+*.test.py
