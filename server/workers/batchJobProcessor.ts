@@ -1,8 +1,5 @@
 import { query, execute } from "../db";
-import {
-  generateArticleContent as aiGenerateArticle,
-  insertImagesIntoArticle,
-} from "../services/aiService";
+import { generateCompleteArticle } from "../services/articleGenerationService";
 
 interface BatchJob {
   id: number;
@@ -25,39 +22,63 @@ interface JobData {
   keywords: string[];
   settings: {
     outlineOption?: string;
+    customOutline?: string;
     autoInsertImages?: boolean;
     maxImages?: number;
   };
 }
 
-let isProcessing = false;
+// Track processing jobs by user_id to avoid processing same user's jobs concurrently
+const processingJobs = new Set<number>();
+const MAX_CONCURRENT_JOBS = 5; // Process up to 5 jobs simultaneously
 
 /**
- * Main worker function - processes batch jobs sequentially
+ * Main worker function - processes batch jobs in parallel
+ * Can process up to MAX_CONCURRENT_JOBS at the same time
  */
 export async function processBatchJobs() {
-  if (isProcessing) {
-    console.log("[BatchWorker] Already processing, skipping...");
-    return;
-  }
-
   try {
-    isProcessing = true;
-
-    // Get oldest pending job
+    // Get pending jobs (one per user to avoid conflicts)
     const jobs = await query<BatchJob>(
       `SELECT * FROM batch_jobs 
        WHERE status = 'pending' 
        ORDER BY created_at ASC 
-       LIMIT 1`
+       LIMIT ?`,
+      [MAX_CONCURRENT_JOBS]
     );
 
     if (!jobs || jobs.length === 0) {
       return; // No jobs to process
     }
 
-    const job = jobs[0];
-    console.log(`[BatchWorker] Processing job #${job.id}`);
+    // Filter out jobs for users already being processed
+    const availableJobs = jobs.filter(job => !processingJobs.has(job.user_id));
+
+    if (availableJobs.length === 0) {
+      console.log("[BatchWorker] All pending jobs are for users already being processed");
+      return;
+    }
+
+    console.log(`[BatchWorker] Processing ${availableJobs.length} jobs in parallel`);
+
+    // Process all available jobs in parallel
+    const promises = availableJobs.map(job => processJob(job));
+    await Promise.allSettled(promises);
+
+  } catch (error: any) {
+    console.error("[BatchWorker] Unexpected error:", error);
+  }
+}
+
+/**
+ * Process a single batch job
+ */
+async function processJob(job: BatchJob) {
+  // Mark this user's job as being processed
+  processingJobs.add(job.user_id);
+
+  try {
+    console.log(`[BatchWorker] Processing job #${job.id} for user ${job.user_id}`);
 
     // Mark as processing
     await execute(
@@ -158,7 +179,7 @@ export async function processBatchJobs() {
       try {
         console.log(`[BatchWorker] Processing keyword ${i + 1}/${keywords.length}: "${keyword}"`);
 
-        const result = await createArticle(job.user_id, keyword, settings);
+        const result = await createArticle(job.user_id, keyword, i, settings);
 
         if (result && result.articleId) {
           const { articleId, tokensUsed } = result;
@@ -221,109 +242,74 @@ export async function processBatchJobs() {
     console.log(`[BatchWorker] Job #${job.id} completed successfully`);
 
   } catch (error: any) {
-    console.error("[BatchWorker] Unexpected error:", error);
+    console.error(`[BatchWorker] Error processing job #${job.id}:`, error);
   } finally {
-    isProcessing = false;
+    // Remove from processing set
+    processingJobs.delete(job.user_id);
   }
 }
 
 /**
- * Create article draft and trigger AI generation
+ * Create article using the unified article generation service
+ * This ensures batch processing uses the same logic as single article generation
  */
 async function createArticle(
   userId: number,
   keyword: string,
+  keywordIndex: number,
   settings: any
 ): Promise<{ articleId: number; tokensUsed: number } | null> {
   try {
-    // 1. Create draft article
-    const result = await execute(
-      `INSERT INTO articles (user_id, title, content, status, created_at, updated_at)
-       VALUES (?, ?, '', 'draft', NOW(), NOW())`,
-      [userId, keyword]
-    );
+    console.log(`\n📝 [BatchWorker] Creating article for keyword: "${keyword}"`);
+    console.log(`   Settings:`, {
+      model: settings.model,
+      length: settings.length,
+      outlineType: settings.outlineOption,
+      language: settings.language,
+      tone: settings.tone
+    });
 
-    const articleId = result.insertId;
+    // Call the unified article generation service
+    const result = await generateCompleteArticle({
+      userId,
+      keyword,
+      language: settings.language || 'vi',
+      tone: settings.tone || 'professional',
+      model: settings.model || 'gpt-4',
+      length: settings.length || 'medium',
+      outlineType: settings.outlineOption || 'no-outline',
+      customOutline: settings.customOutline || '',
+      websiteId: settings.websiteId || '',
+      autoInsertImages: settings.autoInsertImages || false,
+      maxImages: settings.maxImages || 5,
+      useGoogleSearch: settings.useGoogleSearch || false
+    });
 
-    if (!articleId) {
+    if (result.success && result.articleId) {
+      console.log(`✅ [BatchWorker] Article created successfully`);
+      console.log(`   Article ID: ${result.articleId}`);
+      console.log(`   Tokens used: ${result.tokensUsed}`);
+      
+      return {
+        articleId: result.articleId,
+        tokensUsed: result.tokensUsed || 0
+      };
+    } else {
+      console.error(`❌ [BatchWorker] Article generation failed:`, result.error);
       return null;
     }
 
-    // 2. Generate AI content
-    const tokensUsed = await generateArticleContent(articleId, userId, keyword, settings);
-
-    return { articleId, tokensUsed };
   } catch (error: any) {
-    console.error(`[BatchWorker] Error creating article:`, error);
+    console.error(`❌ [BatchWorker] Error creating article:`, error);
     return null;
   }
 }
 
-/**
- * Generate article content using AI
- * Calls the aiService to generate content
- */
-async function generateArticleContent(
-  articleId: number,
-  userId: number,
-  keyword: string,
-  settings: any
-) {
-  try {
-    console.log(`[BatchWorker] Generating AI content for article #${articleId} (keyword: "${keyword}")`);
-    
-    // Prepare options for AI service
-    const options = {
-      keyword: keyword,
-      language: settings.language || "vi",
-      outlineType: settings.outlineOption || "ai-outline",
-      tone: settings.tone || "professional",
-      model: settings.model || "GPT 4",
-      length: settings.length || "medium",
-      userId: userId,
-      useGoogleSearch: settings.useGoogleSearch || false,
-      websiteId: settings.websiteId || undefined,
-    };
-
-    // Generate article content
-    const result = await aiGenerateArticle(options);
-
-    if (!result.success || !result.content) {
-      throw new Error(result.error || "Failed to generate content");
-    }
-
-    console.log(`✅ [BatchWorker] Content generated (${result.content.length} chars, ${result.tokensUsed} tokens)`);
-
-    // Update article with generated content
-    await execute(
-      "UPDATE articles SET content = ?, updated_at = NOW() WHERE id = ?",
-      [result.content, articleId]
-    );
-
-    // Auto-insert images if requested
-    if (settings.autoInsertImages) {
-      const maxImages = settings.maxImages || 5;
-      console.log(`🖼️ [BatchWorker] Auto-inserting up to ${maxImages} images...`);
-      
-      const imageResult = await insertImagesIntoArticle(
-        articleId,
-        keyword,
-        maxImages
-      );
-
-      if (imageResult.success) {
-        console.log(`✅ [BatchWorker] Inserted ${imageResult.imagesInserted} images`);
-      } else {
-        console.log(`⚠️ [BatchWorker] Image insertion failed: ${imageResult.error}`);
-      }
-    }
-
-    return result.tokensUsed || 0;
-  } catch (error: any) {
-    console.error(`[BatchWorker] Error generating article content:`, error);
-    throw error;
-  }
-}
+// ========== OLD IMPLEMENTATION - REMOVED ==========
+// The old generateArticleContent and helper functions have been removed.
+// All article generation now goes through the unified articleGenerationService.
+// This ensures consistency between single and batch article generation.
+// =================================================
 
 /**
  * Mark job as failed

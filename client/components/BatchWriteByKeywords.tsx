@@ -52,8 +52,8 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
     language: "vi",
     tone: "SEO Basic: Tập trung vào từ khóa - Tốt nhất khi từ khóa là dạng câu hỏi 🔥",
     outlineLength: "medium",
-    outlineOption: "ai-outline",
-    autoInsertImages: true,
+    outlineOption: "no-outline",
+    autoInsertImages: false,
     maxImages: 5,
     websiteId: "",
     useGoogleSearch: false,
@@ -64,6 +64,7 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
   const [websites, setWebsites] = useState<any[]>([]);
   const [loadingWebsites, setLoadingWebsites] = useState(true);
   const [selectedWebsiteKnowledge, setSelectedWebsiteKnowledge] = useState("");
+  const [customOutline, setCustomOutline] = useState("");
 
   // Load AI models from database
   useEffect(() => {
@@ -200,6 +201,7 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
             tone: formData.tone,
             length: formData.outlineLength,
             outlineOption: formData.outlineOption,
+            customOutline: formData.outlineOption === "your-outline" ? customOutline : null,
             autoInsertImages: formData.autoInsertImages,
             maxImages: formData.maxImages,
             websiteId: formData.websiteId ? parseInt(formData.websiteId) : null,
@@ -372,24 +374,52 @@ du lịch đà nẵng, du lịch thành phố đà nẵng"
               </div>
             </label>
 
-            {/* AI Outline */}
-            <label className="flex items-start gap-3 p-4 border-2 border-blue-500 rounded-lg cursor-pointer bg-blue-50">
+            {/* Your Outline */}
+            <label className="flex items-start gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 transition-colors">
               <input
                 type="radio"
                 name="outlineOption"
-                value="ai-outline"
-                checked={formData.outlineOption === "ai-outline"}
+                value="your-outline"
+                checked={formData.outlineOption === "your-outline"}
                 onChange={(e) => setFormData({ ...formData, outlineOption: e.target.value })}
                 disabled={isGenerating}
                 className="mt-1"
               />
               <div className="flex-1">
                 <p className="font-semibold text-foreground flex items-center gap-2">
-                  AI Outline ⭐ <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">Khuyến nghị</span>
+                  Your Outline ✍️
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  AI tự động tạo dàn ý và viết bài theo dàn ý đó
+                  Tự tạo dàn ý riêng cho từng bài viết
                 </p>
+                
+                {formData.outlineOption === "your-outline" && (
+                  <div className="mt-3">
+                    <Label className="text-sm mb-2 block font-medium">Nhập dàn ý theo cấu trúc:</Label>
+                    <div className="mb-2 text-xs text-gray-600 bg-gray-100 p-3 rounded border border-gray-300">
+                      <strong>Cấu trúc:</strong><br/>
+                      [h2] Tiêu đề 1<br/>
+                      [h3] Tiêu đề con<br/>
+                      [h2] Tiêu đề 2<br/>
+                      <br/>
+                      [h2] Tiêu đề 1<br/>
+                      [h2] Tiêu đề 2<br/>
+                      <br/>
+                      ...<br/>
+                      <br/>
+                      <span className="text-blue-600 font-medium">
+                        💡 Mỗi khối dàn ý (cách nhau bằng dòng trắng) tương ứng với từ khóa theo thứ tự
+                      </span>
+                    </div>
+                    <textarea
+                      value={customOutline}
+                      onChange={(e) => setCustomOutline(e.target.value)}
+                      disabled={isGenerating}
+                      placeholder="Nhập dàn ý cho từng từ khóa, cách nhau bằng dòng trắng..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg font-mono text-sm min-h-[200px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
               </div>
             </label>
           </div>

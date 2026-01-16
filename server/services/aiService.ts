@@ -99,6 +99,146 @@ interface GenerateOutlineOptions {
   userId: number;
 }
 
+/**
+ * Universal AI API caller - supports both OpenAI and Google AI (Gemini)
+ */
+async function callAI(
+  provider: string,
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number = 4000,
+  temperature: number = 0.7
+): Promise<{ success: boolean; content?: string; error?: string; tokensUsed?: number }> {
+  try {
+    console.log(`🔵 [callAI] Starting AI call...`);
+    console.log(`   Provider: ${provider}`);
+    console.log(`   Model: ${model}`);
+    console.log(`   API Key: ${apiKey.substring(0, 10)}...`);
+    console.log(`   Max Tokens: ${maxTokens}`);
+    console.log(`   Temperature: ${temperature}`);
+    
+    if (provider === "google-ai") {
+      // Call Google AI (Gemini)
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      console.log(`🟢 [callAI] Calling Google AI API...`);
+      console.log(`   URL: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`);
+      
+      const requestBody = {
+        contents: [
+          {
+            parts: [{ text: systemPrompt + "\n\n" + userPrompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: temperature,
+          maxOutputTokens: maxTokens,
+        },
+      };
+      console.log(`   Request body:`, JSON.stringify(requestBody, null, 2).substring(0, 500));
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log(`   Response status: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("❌ [callAI] Google AI API error:", JSON.stringify(errorData, null, 2));
+        return {
+          success: false,
+          error: `Google AI API error (${response.status}): ${errorData.error?.message || JSON.stringify(errorData)}`,
+        };
+      }
+
+      const data = await response.json();
+      console.log(`   Response data:`, JSON.stringify(data, null, 2).substring(0, 500));
+      
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      if (!content) {
+        console.error("❌ [callAI] No content generated from Google AI");
+        console.error("   Full response:", JSON.stringify(data, null, 2));
+        return {
+          success: false,
+          error: "No content generated from Google AI",
+        };
+      }
+
+      // Gemini doesn't provide token usage in same format, estimate
+      const tokensUsed = Math.ceil(content.length / 4);
+
+      console.log(`✅ [callAI] Google AI success! Generated ${content.length} chars, ~${tokensUsed} tokens`);
+
+      return {
+        success: true,
+        content: content.trim(),
+        tokensUsed: tokensUsed,
+      };
+    } else {
+      // Call OpenAI
+      console.log(`🟡 [callAI] Calling OpenAI API...`);
+      
+      const response = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            temperature: temperature,
+            max_tokens: maxTokens,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("OpenAI API error:", errorData);
+        return {
+          success: false,
+          error: `OpenAI API error: ${errorData.error?.message || 'Unknown error'}`,
+        };
+      }
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content?.trim() || "";
+
+      if (!content) {
+        return {
+          success: false,
+          error: "No content generated from OpenAI",
+        };
+      }
+
+      const tokensUsed = calculateActualTokens(data);
+
+      return {
+        success: true,
+        content: content,
+        tokensUsed: tokensUsed,
+      };
+    }
+  } catch (error: any) {
+    console.error(`[callAI] Error calling ${provider}:`, error);
+    return {
+      success: false,
+      error: error.message || "Internal error calling AI API",
+    };
+  }
+}
+
 interface GenerateArticleOptions {
   keyword: string;
   language: string;
@@ -128,6 +268,76 @@ interface GenerateArticleOptions {
  * Get API key and configuration for a specific model
  */
 async function getApiKeyForModel(
+  model: string,
+  useGoogleSearch: boolean = false
+): Promise<{ apiKey: string; provider: string; actualModel: string } | null> {
+  console.log(`🔍 [getApiKeyForModel] Looking up model: "${model}", useGoogleSearch: ${useGoogleSearch}`);
+  
+  // If useGoogleSearch is true, force use Google AI (Gemini)
+  if (useGoogleSearch) {
+    console.log(`   Force using Google AI for search`);
+    const googleKeys = await query<any>(
+      `SELECT api_key FROM api_keys
+       WHERE provider = 'google-ai' AND category = 'content' AND is_active = TRUE
+       LIMIT 1`
+    );
+
+    if (googleKeys.length === 0) {
+      console.error(`❌ [getApiKeyForModel] No Google AI API key found`);
+      return null;
+    }
+
+    console.log(`✅ [getApiKeyForModel] Found Google AI key, using gemini-2.0-flash-exp`);
+    return {
+      apiKey: googleKeys[0].api_key,
+      provider: "google-ai",
+      actualModel: "gemini-2.0-flash-exp", // Use latest Gemini model with search
+    };
+  }
+
+  // Query model info from database
+  console.log(`   Querying ai_models table for model: "${model}"`);
+  const modelInfo = await query<any>(
+    `SELECT model_name, provider FROM ai_models WHERE model_name = ? AND is_active = TRUE LIMIT 1`,
+    [model]
+  );
+
+  if (modelInfo.length === 0) {
+    console.error(`❌ [getApiKeyForModel] Model "${model}" not found in database`);
+    console.error(`   This model may not exist in ai_models table or is inactive`);
+    return null;
+  }
+
+  const { model_name, provider } = modelInfo[0];
+  console.log(`   Found model in DB: model_name="${model_name}", provider="${provider}"`);
+
+  // Get API key for this provider
+  console.log(`   Querying api_keys for provider: "${provider}"`);
+  const apiKeys = await query<any>(
+    `SELECT api_key FROM api_keys
+     WHERE provider = ? AND category = 'content' AND is_active = TRUE
+     LIMIT 1`,
+    [provider]
+  );
+
+  if (apiKeys.length === 0) {
+    console.error(`❌ [getApiKeyForModel] No API key found for provider "${provider}"`);
+    console.error(`   Check api_keys table for active key with this provider`);
+    return null;
+  }
+
+  console.log(`✅ [getApiKeyForModel] Found API key for provider "${provider}"`);
+  console.log(`   Returning: provider="${provider}", actualModel="${model_name}", apiKey=${apiKeys[0].api_key.substring(0, 10)}...`);
+
+  return {
+    apiKey: apiKeys[0].api_key,
+    provider: provider,
+    actualModel: model_name,
+  };
+}
+
+// Legacy function kept for backward compatibility - deprecated
+async function getApiKeyForModelLegacy(
   model: string,
   useGoogleSearch: boolean = false
 ): Promise<{ apiKey: string; provider: string; actualModel: string } | null> {
@@ -298,42 +508,25 @@ Output ONLY the outline structure in this exact format:
 Create the outline now:`;
     }
 
-    // Call OpenAI API
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: actualModel,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
-    });
+    // Call AI API (supports both OpenAI and Gemini)
+    const aiResult = await callAI(
+      provider,
+      apiKey,
+      actualModel,
+      systemPrompt,
+      userPrompt,
+      1000,
+      0.7
+    );
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
+    if (!aiResult.success || !aiResult.content) {
       return {
         success: false,
-        error: "Failed to generate outline from API",
+        error: aiResult.error || "Failed to generate outline",
       };
     }
 
-    const data = await response.json();
-    let outline = data.choices[0]?.message?.content?.trim();
-
-    if (!outline) {
-      return {
-        success: false,
-        error: "No outline generated",
-      };
-    }
+    let outline = aiResult.content;
 
     // Add conclusion section if not present
     if (
@@ -345,8 +538,7 @@ Create the outline now:`;
     }
 
     // Calculate and deduct tokens
-    const actualTokens = calculateActualTokens(data);
-    const tokensToDeduct = actualTokens > 0 ? actualTokens : estimatedTokens;
+    const tokensToDeduct = aiResult.tokensUsed || estimatedTokens;
 
     const deductResult = await deductTokens(
       userId,
@@ -373,6 +565,295 @@ Create the outline now:`;
       success: false,
       error: error.message || "Internal error",
     };
+  }
+}
+
+/**
+ * Generate article title for a keyword
+ */
+export async function generateArticleTitle(
+  keyword: string,
+  userId: number,
+  language: string = "vi",
+  tone: string = "professional",
+  model: string = "GPT 4"
+): Promise<{ success: boolean; title?: string; tokensUsed?: number; error?: string }> {
+  try {
+    console.log(`📝 [AIService] Generating title for: "${keyword}"`);
+
+    const estimatedTokens = 200;
+
+    // Check tokens
+    const tokenCheck = await checkTokensMiddleware(userId, estimatedTokens, "GENERATE_TITLE");
+    if (!tokenCheck.allowed) {
+      return {
+        success: false,
+        error: `Insufficient tokens. Required: ${estimatedTokens}, Available: ${tokenCheck.remainingTokens || 0}`,
+      };
+    }
+
+    // Get API key
+    const modelConfig = await getApiKeyForModel(model, false);
+    if (!modelConfig) {
+      return { success: false, error: "API key not configured" };
+    }
+
+    const { apiKey, provider, actualModel } = modelConfig;
+    const languageName = language === "vi" ? "Vietnamese" : language;
+
+    // Get prompts
+    const systemPrompt = getSystemPrompt("generate_article_title");
+    const promptTemplate = await loadPrompt("generate_article_title");
+
+    let userPrompt = "";
+    if (promptTemplate) {
+      userPrompt = interpolatePrompt(promptTemplate.prompt_template, {
+        keyword: keyword,
+        language: languageName,
+        tone: tone,
+      });
+    } else {
+      // Fallback
+      userPrompt = `Generate an engaging article title for the keyword: "${keyword}"
+
+Requirements:
+- Language: ${languageName}
+- Tone: ${tone}
+- Make it compelling and click-worthy
+- Keep it concise (under 60 characters)
+
+Output ONLY the title, nothing else.`;
+    }
+
+    // Call AI API (supports both OpenAI and Gemini)
+    const aiResult = await callAI(
+      provider,
+      apiKey,
+      actualModel,
+      systemPrompt,
+      userPrompt,
+      100,
+      0.7
+    );
+
+    if (!aiResult.success || !aiResult.content) {
+      return { 
+        success: false, 
+        error: aiResult.error || "Failed to generate title"
+      };
+    }
+
+    const title = aiResult.content;
+
+    // Deduct tokens
+    const tokensToDeduct = aiResult.tokensUsed || estimatedTokens;
+    await deductTokens(userId, tokensToDeduct, "GENERATE_TITLE");
+
+    console.log(`✅ [AIService] Title generated: "${title}" (${tokensToDeduct} tokens)`);
+
+    return {
+      success: true,
+      title: title,
+      tokensUsed: tokensToDeduct,
+    };
+  } catch (error: any) {
+    console.error("[AIService] Error generating title:", error);
+    return { success: false, error: error.message || "Internal error" };
+  }
+}
+
+/**
+ * Generate SEO title for an article
+ */
+export async function generateArticleSEOTitle(
+  title: string,
+  keyword: string,
+  userId: number,
+  language: string = "vi",
+  model: string = "GPT 4"
+): Promise<{ success: boolean; seoTitle?: string; tokensUsed?: number; error?: string }> {
+  try {
+    console.log(`🔍 [AIService] Generating SEO title for: "${title}"`);
+
+    const estimatedTokens = 200;
+
+    // Check tokens
+    const tokenCheck = await checkTokensMiddleware(userId, estimatedTokens, "GENERATE_SEO_TITLE");
+    if (!tokenCheck.allowed) {
+      return {
+        success: false,
+        error: `Insufficient tokens. Required: ${estimatedTokens}, Available: ${tokenCheck.remainingTokens || 0}`,
+      };
+    }
+
+    // Get API key
+    const modelConfig = await getApiKeyForModel(model, false);
+    if (!modelConfig) {
+      return { success: false, error: "API key not configured" };
+    }
+
+    const { apiKey, provider, actualModel } = modelConfig;
+    const languageName = language === "vi" ? "Vietnamese" : language;
+
+    // Get prompts
+    const systemPrompt = getSystemPrompt("generate_seo_title");
+    const promptTemplate = await loadPrompt("generate_seo_title");
+
+    let userPrompt = "";
+    if (promptTemplate) {
+      userPrompt = interpolatePrompt(promptTemplate.prompt_template, {
+        title: title,
+        keyword: keyword,
+        language: languageName,
+      });
+    } else {
+      // Fallback
+      userPrompt = `Create an SEO-optimized title for:
+
+Article Title: ${title}
+Target Keyword: ${keyword}
+Language: ${languageName}
+
+Requirements:
+- Include the target keyword naturally
+- Keep it under 60 characters
+- Make it search engine friendly
+
+Output ONLY the SEO title, nothing else.`;
+    }
+
+    // Call AI API (supports both OpenAI and Gemini)
+    const aiResult = await callAI(
+      provider,
+      apiKey,
+      actualModel,
+      systemPrompt,
+      userPrompt,
+      100,
+      0.7
+    );
+
+    if (!aiResult.success || !aiResult.content) {
+      return { 
+        success: false, 
+        error: aiResult.error || "Failed to generate SEO title"
+      };
+    }
+
+    const seoTitle = aiResult.content;
+
+    // Deduct tokens
+    const tokensToDeduct = aiResult.tokensUsed || estimatedTokens;
+    await deductTokens(userId, tokensToDeduct, "GENERATE_SEO_TITLE");
+
+    console.log(`✅ [AIService] SEO title generated: "${seoTitle}" (${tokensToDeduct} tokens)`);
+
+    return {
+      success: true,
+      seoTitle: seoTitle,
+      tokensUsed: tokensToDeduct,
+    };
+  } catch (error: any) {
+    console.error("[AIService] Error generating SEO title:", error);
+    return { success: false, error: error.message || "Internal error" };
+  }
+}
+
+/**
+ * Generate meta description for an article
+ */
+export async function generateArticleMetaDescription(
+  title: string,
+  keyword: string,
+  userId: number,
+  language: string = "vi",
+  model: string = "GPT 4"
+): Promise<{ success: boolean; metaDesc?: string; tokensUsed?: number; error?: string }> {
+  try {
+    console.log(`📄 [AIService] Generating meta description for: "${title}"`);
+
+    const estimatedTokens = 300;
+
+    // Check tokens
+    const tokenCheck = await checkTokensMiddleware(userId, estimatedTokens, "GENERATE_META_DESC");
+    if (!tokenCheck.allowed) {
+      return {
+        success: false,
+        error: `Insufficient tokens. Required: ${estimatedTokens}, Available: ${tokenCheck.remainingTokens || 0}`,
+      };
+    }
+
+    // Get API key
+    const modelConfig = await getApiKeyForModel(model, false);
+    if (!modelConfig) {
+      return { success: false, error: "API key not configured" };
+    }
+
+    const { apiKey, provider, actualModel } = modelConfig;
+    const languageName = language === "vi" ? "Vietnamese" : language;
+
+    // Get prompts
+    const systemPrompt = getSystemPrompt("generate_meta_description");
+    const promptTemplate = await loadPrompt("generate_meta_description");
+
+    let userPrompt = "";
+    if (promptTemplate) {
+      userPrompt = interpolatePrompt(promptTemplate.prompt_template, {
+        title: title,
+        keyword: keyword,
+        language: languageName,
+      });
+    } else {
+      // Fallback
+      userPrompt = `Create an SEO-optimized meta description for:
+
+Article Title: ${title}
+Target Keyword: ${keyword}
+Language: ${languageName}
+
+Requirements:
+- Include the target keyword naturally
+- Keep it between 150-160 characters
+- Make it compelling and informative
+- Encourage clicks from search results
+
+Output ONLY the meta description, nothing else.`;
+    }
+
+    // Call AI API (supports both OpenAI and Gemini)
+    const aiResult = await callAI(
+      provider,
+      apiKey,
+      actualModel,
+      systemPrompt,
+      userPrompt,
+      150,
+      0.7
+    );
+
+    if (!aiResult.success || !aiResult.content) {
+      return { 
+        success: false, 
+        error: aiResult.error || "Failed to generate meta description"
+      };
+    }
+
+    const metaDesc = aiResult.content;
+
+    // Deduct tokens
+    const tokensToDeduct = aiResult.tokensUsed || estimatedTokens;
+    await deductTokens(userId, tokensToDeduct, "GENERATE_META_DESC");
+
+    console.log(`✅ [AIService] Meta description generated (${tokensToDeduct} tokens)`);
+
+    return {
+      success: true,
+      metaDesc: metaDesc,
+      tokensUsed: tokensToDeduct,
+    };
+  } catch (error: any) {
+    console.error("[AIService] Error generating meta description:", error);
+    return { success: false, error: error.message || "Internal error" };
   }
 }
 
@@ -501,6 +982,16 @@ export async function generateArticleContent(
 
     // Get system prompt
     let systemPrompt = getSystemPrompt("generate_article");
+    
+    // Add critical instruction to avoid meta-text
+    systemPrompt += `\n\nCRITICAL INSTRUCTIONS:
+- Write DIRECTLY in the target language specified by the user
+- DO NOT write explanations like "As an expert..." or "I will write..."
+- DO NOT include meta-commentary about the article
+- DO NOT write summaries at the end like "This article provides..."
+- START immediately with the article content in HTML format
+- END with the last paragraph of the conclusion
+- Output ONLY the article HTML, nothing else`;
 
     // Inject website knowledge if provided
     if (websiteId && websiteId.trim()) {
@@ -527,12 +1018,45 @@ export async function generateArticleContent(
     let userPrompt = "";
 
     if (promptTemplate) {
+      // Build paragraph rules based on length and outline type
+      let outlineMode = "";
+      let paragraphWords = "100";
+      
+      if (outlineType === "no-outline" || outlineType === "ai-outline") {
+        // Rules for No Outline mode
+        if (lengthKey === "short") {
+          outlineMode = "Write 1-2 paragraphs per H2 heading. Each paragraph MUST be at least 80 words.";
+          paragraphWords = "80";
+        } else if (lengthKey === "medium") {
+          outlineMode = "Write 2-3 paragraphs per H2 heading. Each paragraph MUST be at least 100 words.";
+          paragraphWords = "100";
+        } else {
+          // long
+          outlineMode = "Write 3-4 paragraphs per H2 heading. Each paragraph MUST be at least 100 words.";
+          paragraphWords = "100";
+        }
+      } else {
+        // Your Outline mode - default to Medium rules
+        outlineMode = "Write 2-3 paragraphs per heading in the outline. Each paragraph MUST be at least 100 words.";
+        paragraphWords = "100";
+      }
+
+      const outlineInstruction = finalOutline
+        ? `Follow this outline structure exactly:\n${finalOutline}`
+        : "Create a comprehensive article structure with multiple H2 sections and H3 subsections.";
+
       userPrompt = interpolatePrompt(promptTemplate.prompt_template, {
         keyword: keyword,
-        language_instruction: languageInstruction,
+        language: languageInstruction,
         tone: tone,
         length_instruction: lengthInstruction,
-        outline: finalOutline,
+        min_words: lengthConfig.minWords.toString(),
+        max_words: lengthConfig.maxWords.toString(),
+        outline_instruction: outlineInstruction,
+        writing_style: lengthConfig.style,
+        outline_mode: outlineMode,
+        paragraph_words: paragraphWords,
+        outline: finalOutline || "",
       });
     } else {
       // Fallback

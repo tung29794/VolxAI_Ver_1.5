@@ -29,9 +29,39 @@ const authenticateToken = async (
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key") as any;
-    req.user = decoded;
+    
+    // Decode JWT token - it contains userId, not user object
+    const userId = decoded.userId || decoded.id;
+    
+    if (!userId) {
+      return res.status(403).json({
+        success: false,
+        error: "Invalid token format",
+      });
+    }
+
+    // Fetch user from database
+    const users = await query<any>(
+      "SELECT id, email, role FROM users WHERE id = ?",
+      [userId]
+    );
+
+    if (!users || users.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    req.user = {
+      id: users[0].id,
+      email: users[0].email,
+      role: users[0].role,
+    };
+    
     next();
   } catch (error) {
+    console.error("[batchJobs] Auth error:", error);
     return res.status(403).json({
       success: false,
       error: "Invalid token",

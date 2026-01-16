@@ -3,7 +3,7 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   User,
   Mail,
@@ -50,6 +50,7 @@ type AccountTab =
 export default function Account() {
   const { user, logoutUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<AccountTab>("profile");
   const [sidebarOpen, setSidebarOpen] = useState(
     typeof window !== "undefined" && window.innerWidth >= 768,
@@ -58,6 +59,26 @@ export default function Account() {
     writing: true,
     config: false,
   });
+
+  // Handle URL query params for tab navigation
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    if (tabParam && isValidTab(tabParam)) {
+      setActiveTab(tabParam as AccountTab);
+      // Clear the URL param after setting the tab
+      navigate('/account', { replace: true });
+    }
+  }, [location.search, navigate]);
+
+  // Helper function to validate tab
+  const isValidTab = (tab: string): boolean => {
+    const validTabs: AccountTab[] = [
+      "profile", "write", "batch", "rewrite", "auto-blog", 
+      "optimize", "articles", "batch-jobs", "auto-index", "website"
+    ];
+    return validTabs.includes(tab as AccountTab);
+  };
 
   const [activeWritingFeature, setActiveWritingFeature] = useState<
     string | null
