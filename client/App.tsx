@@ -22,6 +22,8 @@ import Register from "./pages/Register";
 import Upgrade from "./pages/Upgrade";
 import Account from "./pages/Account";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminArticles from "./pages/AdminArticles";
+import AdminUsers from "./pages/AdminUsers";
 import ArticleEditor from "./pages/ArticleEditor";
 import NotFound from "./pages/NotFound";
 
@@ -78,10 +80,58 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/articles"
+              element={
+                <ProtectedRoute>
+                  <AdminArticles />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <AdminUsers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/articles/new"
               element={
                 <ProtectedRoute>
                   <ArticleEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/articles/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <ArticleEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/article/:id"
+              element={
+                <ProtectedRoute>
+                  <ArticleEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/write-article"
+              element={
+                <ProtectedRoute>
+                  <ArticleEditor hideFeaturedImage={true} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/write-article/:id"
+              element={
+                <ProtectedRoute>
+                  <ArticleEditor hideFeaturedImage={true} />
                 </ProtectedRoute>
               }
             />

@@ -12,21 +12,39 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  MessageSquare,
+  Brain,
+  Users,
 } from "lucide-react";
 import AdminOverview from "@/components/admin/AdminOverview";
 import AdminArticles from "@/components/admin/AdminArticles";
 import AdminPayments from "@/components/admin/AdminPayments";
 import AdminPlans from "@/components/admin/AdminPlans";
 import AdminFeatures from "@/components/admin/AdminFeatures";
+import AdminAPIs from "@/components/admin/AdminAPIs";
+import AdminPrompts from "@/components/admin/AdminPrompts";
+import AdminModelsManager from "@/components/AdminModelsManager";
+import AdminTokenCosts from "@/components/admin/AdminTokenCosts";
+import { Settings, Zap } from "lucide-react";
 
-type AdminTab = "overview" | "articles" | "payments" | "plans" | "features";
+type AdminTab =
+  | "overview"
+  | "articles"
+  | "payments"
+  | "plans"
+  | "features"
+  | "apis"
+  | "prompts"
+  | "models"
+  | "token-costs"
+  | "users";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user, logoutUser } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(
-    typeof window !== "undefined" && window.innerWidth >= 768
+    typeof window !== "undefined" && window.innerWidth >= 768,
   );
 
   // Check if user is admin
@@ -54,6 +72,12 @@ export default function AdminDashboard() {
       description: "Quản lý bài viết",
     },
     {
+      id: "users",
+      label: "Người dùng",
+      icon: Users,
+      description: "Quản lý người dùng",
+    },
+    {
       id: "payments",
       label: "Thanh toán",
       icon: CreditCard,
@@ -70,6 +94,30 @@ export default function AdminDashboard() {
       label: "Các gói dịch vụ",
       icon: Package,
       description: "Quản lý gói dịch vụ",
+    },
+    {
+      id: "apis",
+      label: "Quản lý API",
+      icon: Settings,
+      description: "Quản lý API keys",
+    },
+    {
+      id: "prompts",
+      label: "AI Prompts",
+      icon: MessageSquare,
+      description: "Quản lý prompts cho AI",
+    },
+    {
+      id: "models",
+      label: "AI Models",
+      icon: Brain,
+      description: "Quản lý các AI models",
+    },
+    {
+      id: "token-costs",
+      label: "Token Costs",
+      icon: Zap,
+      description: "Quản lý chi phí token",
     },
   ];
 
@@ -106,6 +154,12 @@ export default function AdminDashboard() {
                 <button
                   key={item.id}
                   onClick={() => {
+                    // Navigate to dedicated page for users
+                    if (item.id === "users") {
+                      navigate("/admin/users");
+                      return;
+                    }
+                    
                     setActiveTab(item.id as AdminTab);
                     // Close sidebar on mobile after selection
                     if (window.innerWidth < 768) {
@@ -166,6 +220,10 @@ export default function AdminDashboard() {
             {activeTab === "payments" && <AdminPayments />}
             {activeTab === "features" && <AdminFeatures />}
             {activeTab === "plans" && <AdminPlans />}
+            {activeTab === "apis" && <AdminAPIs />}
+            {activeTab === "prompts" && <AdminPrompts />}
+            {activeTab === "models" && <AdminModelsManager />}
+            {activeTab === "token-costs" && <AdminTokenCosts />}
           </div>
         </div>
       </div>

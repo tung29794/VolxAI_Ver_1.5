@@ -5,7 +5,7 @@
 
 // Get API URL from environment or use default
 // Default to HTTPS domain-based URL to prevent mixed content errors
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://api.volxai.com";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://api.volxai.com";
 
 export const API_ENDPOINTS = {
   // Auth endpoints

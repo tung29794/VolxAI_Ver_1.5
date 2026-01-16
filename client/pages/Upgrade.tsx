@@ -272,19 +272,16 @@ export default function Upgrade() {
         const response = await fetch(buildApiUrl("/api/auth/plans"));
         const data = await response.json();
         if (data.success && data.data && data.data.length > 0) {
-          console.log("Fetched plans from database:", data.data);
           setPlans(data.data);
           // Calculate and set average savings
           const avgSavings = calculateAverageSavings(data.data);
           setAverageSavingsPercent(avgSavings);
         } else {
-          console.warn("No plans from database, using fallback");
           setPlans(fallbackPlans);
           const avgSavings = calculateAverageSavings(fallbackPlans);
           setAverageSavingsPercent(avgSavings);
         }
       } catch (error) {
-        console.error("Failed to fetch plans:", error);
         setPlans(fallbackPlans);
         const avgSavings = calculateAverageSavings(fallbackPlans);
         setAverageSavingsPercent(avgSavings);
@@ -316,7 +313,6 @@ export default function Upgrade() {
             setCurrentPlan(data.subscription?.plan_type || "free");
           }
         } catch (error) {
-          console.error("Failed to fetch user data:", error);
         }
       };
 
@@ -423,7 +419,7 @@ export default function Upgrade() {
           <div className="inline-flex items-center bg-muted p-1 rounded-full gap-1">
             <button
               onClick={() => setBillingPeriod("monthly")}
-              className={`px-6 py-2 rounded-full font-medium transition-colors ${
+              className={`px-4 py-2 rounded-full font-medium transition-colors ${
                 billingPeriod === "monthly"
                   ? "bg-white text-primary shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -433,7 +429,7 @@ export default function Upgrade() {
             </button>
             <button
               onClick={() => setBillingPeriod("annual")}
-              className={`px-6 py-2 rounded-full font-medium transition-colors ${
+              className={`px-4 py-2 rounded-full font-medium transition-colors ${
                 billingPeriod === "annual"
                   ? "bg-white text-primary shadow-sm"
                   : "text-muted-foreground hover:text-foreground"

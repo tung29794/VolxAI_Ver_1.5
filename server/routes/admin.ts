@@ -73,12 +73,12 @@ router.get("/statistics", async (req: Request, res: Response) => {
         `SELECT
           COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0) as total_revenue,
           DATE(created_at) as date,
-          YEAR_MONTH(created_at) as month,
-          QUARTER(created_at) as quarter,
+          DATE_FORMAT(created_at, '%Y-%m') as month,
+          CONCAT('Q', QUARTER(created_at), ' ', YEAR(created_at)) as quarter,
           YEAR(created_at) as year
         FROM subscription_history
         WHERE status = 'completed' OR status = 'pending_approval'
-        GROUP BY DATE(created_at), YEAR_MONTH(created_at), QUARTER(created_at), YEAR(created_at)
+        GROUP BY DATE(created_at), DATE_FORMAT(created_at, '%Y-%m'), CONCAT('Q', QUARTER(created_at), ' ', YEAR(created_at)), YEAR(created_at)
         ORDER BY created_at DESC`,
       );
     } catch (e: any) {
@@ -126,7 +126,7 @@ router.get("/statistics", async (req: Request, res: Response) => {
         processedMonths.add(monthStr);
       }
 
-      const quarterStr = `Q${record.quarter} ${record.year}`;
+      const quarterStr = record.quarter; // Already formatted as "Q1 2026"
       if (quarterStr && !processedQuarters.has(quarterStr)) {
         quarterlyRevenue.push({
           quarter: quarterStr,
@@ -383,6 +383,13 @@ router.post("/payments/:id/approve", async (req: Request, res: Response) => {
         expiresAt,
         payment.user_id,
       ],
+    );
+
+    // CRITICAL: Also update tokens_remaining in users table to match tokens_limit
+    // This ensures user can immediately use their new tokens
+    await execute(
+      "UPDATE users SET tokens_remaining = ? WHERE id = ?",
+      [newTokensLimit, payment.user_id]
     );
 
     res.json({
@@ -864,6 +871,582 @@ router.delete("/plans/:id", async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete plan",
+    });
+  }
+});
+
+// ===== AI PROMPTS MANAGEMENT =====
+
+// Get all AI prompts
+router.get("/prompts", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const prompts = await query<any>(
+      `SELECT 
+        id,
+        feature_name,
+        display_name,
+        description,
+        prompt_template,
+        system_prompt,
+        available_variables,
+        is_active,
+        created_at,
+        updated_at
+      FROM ai_prompts
+      ORDER BY display_name ASC`
+    );
+
+    // Parse available_variables from JSON string to array
+    const parsedPrompts = prompts.map((prompt: any) => ({
+      ...prompt,
+      available_variables: typeof prompt.available_variables === 'string' 
+        ? JSON.parse(prompt.available_variables) 
+        : prompt.available_variables,
+    }));
+
+    res.json({
+      success: true,
+      prompts: parsedPrompts,
+    });
+  } catch (error) {
+    console.error("Get prompts error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch prompts",
+    });
+  }
+});
+
+// Get single AI prompt by ID
+router.get("/prompts/:id", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const { id } = req.params;
+
+    const prompt = await queryOne<any>(
+      `SELECT 
+        id,
+        feature_name,
+        display_name,
+        description,
+        prompt_template,
+        system_prompt,
+        available_variables,
+        is_active,
+        created_at,
+        updated_at
+      FROM ai_prompts
+      WHERE id = ?`,
+      [id]
+    );
+
+    if (!prompt) {
+      res.status(404).json({
+        success: false,
+        message: "Prompt not found",
+      });
+      return;
+    }
+
+    // Parse available_variables from JSON string to array
+    const parsedPrompt = {
+      ...prompt,
+      available_variables: typeof prompt.available_variables === 'string' 
+        ? JSON.parse(prompt.available_variables) 
+        : prompt.available_variables,
+    };
+
+    res.json({
+      success: true,
+      prompt: parsedPrompt,
+    });
+  } catch (error) {
+    console.error("Get prompt error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch prompt",
+    });
+  }
+});
+
+// Create new AI prompt
+router.post("/prompts", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const {
+      feature_name,
+      display_name,
+      description,
+      prompt_template,
+      system_prompt,
+      available_variables,
+      is_active = true,
+    } = req.body;
+
+    // Validation
+    if (!feature_name || !display_name || !prompt_template || !system_prompt) {
+      res.status(400).json({
+        success: false,
+        message: "Missing required fields: feature_name, display_name, prompt_template, system_prompt",
+      });
+      return;
+    }
+
+    // Check if feature_name already exists
+    const existing = await queryOne<any>(
+      "SELECT id FROM ai_prompts WHERE feature_name = ?",
+      [feature_name]
+    );
+
+    if (existing) {
+      res.status(409).json({
+        success: false,
+        message: "A prompt with this feature name already exists",
+      });
+      return;
+    }
+
+    const result = await execute(
+      `INSERT INTO ai_prompts 
+        (feature_name, display_name, description, prompt_template, system_prompt, available_variables, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        feature_name,
+        display_name,
+        description || null,
+        prompt_template,
+        system_prompt,
+        JSON.stringify(available_variables || []),
+        is_active,
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Prompt created successfully",
+      promptId: result.insertId,
+    });
+  } catch (error) {
+    console.error("Create prompt error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create prompt",
+    });
+  }
+});
+
+// Update AI prompt
+router.put("/prompts/:id", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const { id } = req.params;
+    const {
+      display_name,
+      description,
+      prompt_template,
+      system_prompt,
+      available_variables,
+      is_active,
+    } = req.body;
+
+    // Check if prompt exists
+    const existing = await queryOne<any>(
+      "SELECT id FROM ai_prompts WHERE id = ?",
+      [id]
+    );
+
+    if (!existing) {
+      res.status(404).json({
+        success: false,
+        message: "Prompt not found",
+      });
+      return;
+    }
+
+    // Build update query dynamically
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (display_name !== undefined) {
+      updates.push("display_name = ?");
+      values.push(display_name);
+    }
+    if (description !== undefined) {
+      updates.push("description = ?");
+      values.push(description);
+    }
+    if (prompt_template !== undefined) {
+      updates.push("prompt_template = ?");
+      values.push(prompt_template);
+    }
+    if (system_prompt !== undefined) {
+      updates.push("system_prompt = ?");
+      values.push(system_prompt);
+    }
+    if (available_variables !== undefined) {
+      updates.push("available_variables = ?");
+      values.push(JSON.stringify(available_variables));
+    }
+    if (is_active !== undefined) {
+      updates.push("is_active = ?");
+      values.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: "No fields to update",
+      });
+      return;
+    }
+
+    values.push(id);
+
+    await execute(
+      `UPDATE ai_prompts 
+      SET ${updates.join(", ")}
+      WHERE id = ?`,
+      values
+    );
+
+    res.json({
+      success: true,
+      message: "Prompt updated successfully",
+    });
+  } catch (error) {
+    console.error("Update prompt error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update prompt",
+    });
+  }
+});
+
+// Delete AI prompt
+router.delete("/prompts/:id", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const { id } = req.params;
+
+    // Check if prompt exists
+    const existing = await queryOne<any>(
+      "SELECT id, feature_name FROM ai_prompts WHERE id = ?",
+      [id]
+    );
+
+    if (!existing) {
+      res.status(404).json({
+        success: false,
+        message: "Prompt not found",
+      });
+      return;
+    }
+
+    await execute("DELETE FROM ai_prompts WHERE id = ?", [id]);
+
+    res.json({
+      success: true,
+      message: "Prompt deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete prompt error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete prompt",
+    });
+  }
+});
+
+// Toggle prompt active status
+router.patch("/prompts/:id/toggle", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const { id } = req.params;
+
+    // Check if prompt exists
+    const existing = await queryOne<any>(
+      "SELECT id, is_active FROM ai_prompts WHERE id = ?",
+      [id]
+    );
+
+    if (!existing) {
+      res.status(404).json({
+        success: false,
+        message: "Prompt not found",
+      });
+      return;
+    }
+
+    const newStatus = !existing.is_active;
+
+    await execute(
+      "UPDATE ai_prompts SET is_active = ? WHERE id = ?",
+      [newStatus, id]
+    );
+
+    res.json({
+      success: true,
+      message: `Prompt ${newStatus ? "activated" : "deactivated"} successfully`,
+      is_active: newStatus,
+    });
+  } catch (error) {
+    console.error("Toggle prompt error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to toggle prompt status",
+    });
+  }
+});
+
+// ========================================
+// AI FEATURE TOKEN COSTS MANAGEMENT
+// ========================================
+
+// Get all AI feature token costs
+router.get("/token-costs", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const costs = await query<any>(
+      `SELECT 
+        id,
+        feature_key,
+        feature_name,
+        token_cost,
+        description,
+        is_active,
+        created_at,
+        updated_at
+      FROM ai_feature_token_costs
+      ORDER BY 
+        CASE feature_key
+          WHEN 'generate_article' THEN 1
+          WHEN 'generate_toplist' THEN 2
+          WHEN 'generate_news' THEN 3
+          WHEN 'continue_article' THEN 4
+          WHEN 'generate_seo_title' THEN 5
+          WHEN 'generate_article_title' THEN 6
+          WHEN 'generate_meta_description' THEN 7
+          WHEN 'ai_rewrite_text' THEN 8
+          WHEN 'find_image' THEN 9
+          WHEN 'write_more' THEN 10
+          ELSE 99
+        END`
+    );
+
+    res.json({
+      success: true,
+      data: costs,
+    });
+  } catch (error) {
+    console.error("Get token costs error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch token costs",
+    });
+  }
+});
+
+// Get single token cost
+router.get("/token-costs/:id", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const { id } = req.params;
+
+    const cost = await queryOne<any>(
+      `SELECT 
+        id,
+        feature_key,
+        feature_name,
+        token_cost,
+        description,
+        is_active,
+        created_at,
+        updated_at
+      FROM ai_feature_token_costs
+      WHERE id = ?`,
+      [id]
+    );
+
+    if (!cost) {
+      return res.status(404).json({
+        success: false,
+        message: "Token cost not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: cost,
+    });
+  } catch (error) {
+    console.error("Get token cost error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch token cost",
+    });
+  }
+});
+
+// Update token cost
+router.put("/token-costs/:id", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const { id } = req.params;
+    const { token_cost, feature_name, description, is_active } = req.body;
+
+    // Check if cost exists
+    const cost = await queryOne<any>(
+      "SELECT id FROM ai_feature_token_costs WHERE id = ?",
+      [id]
+    );
+
+    if (!cost) {
+      return res.status(404).json({
+        success: false,
+        message: "Token cost not found",
+      });
+    }
+
+    // Validate token_cost
+    if (token_cost !== undefined) {
+      const tokenCostNum = parseInt(token_cost);
+      if (isNaN(tokenCostNum) || tokenCostNum < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Token cost must be a non-negative number",
+        });
+      }
+    }
+
+    // Build update query dynamically
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (feature_name !== undefined) {
+      updates.push("feature_name = ?");
+      values.push(feature_name);
+    }
+    if (token_cost !== undefined) {
+      updates.push("token_cost = ?");
+      values.push(parseInt(token_cost));
+    }
+    if (description !== undefined) {
+      updates.push("description = ?");
+      values.push(description);
+    }
+    if (is_active !== undefined) {
+      updates.push("is_active = ?");
+      values.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No fields to update",
+      });
+    }
+
+    values.push(id);
+
+    await execute(
+      `UPDATE ai_feature_token_costs SET ${updates.join(", ")} WHERE id = ?`,
+      values
+    );
+
+    res.json({
+      success: true,
+      message: "Token cost updated successfully",
+    });
+  } catch (error) {
+    console.error("Update token cost error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update token cost",
+    });
+  }
+});
+
+// Toggle token cost active status
+router.patch("/token-costs/:id/toggle", async (req: Request, res: Response) => {
+  if (!(await verifyAdmin(req, res))) return;
+
+  try {
+    const { id } = req.params;
+
+    const existing = await queryOne<any>(
+      "SELECT id, is_active FROM ai_feature_token_costs WHERE id = ?",
+      [id]
+    );
+
+    if (!existing) {
+      res.status(404).json({
+        success: false,
+        message: "Token cost not found",
+      });
+      return;
+    }
+
+    const newStatus = !existing.is_active;
+
+    await execute(
+      "UPDATE ai_feature_token_costs SET is_active = ? WHERE id = ?",
+      [newStatus, id]
+    );
+
+    res.json({
+      success: true,
+      message: `Token cost ${newStatus ? "activated" : "deactivated"} successfully`,
+      is_active: newStatus,
+    });
+  } catch (error) {
+    console.error("Toggle token cost error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to toggle token cost status",
+    });
+  }
+});
+
+// Get token cost by feature key (used by AI endpoints)
+router.get("/token-costs/feature/:featureKey", async (req: Request, res: Response) => {
+  // This endpoint doesn't require admin auth - it's used by AI endpoints
+  try {
+    const { featureKey } = req.params;
+
+    const cost = await queryOne<any>(
+      `SELECT token_cost 
+       FROM ai_feature_token_costs 
+       WHERE feature_key = ? AND is_active = TRUE`,
+      [featureKey]
+    );
+
+    if (!cost) {
+      // Return default cost if not found
+      return res.json({
+        success: true,
+        data: { token_cost: 1000 }, // Default fallback
+      });
+    }
+
+    res.json({
+      success: true,
+      data: cost,
+    });
+  } catch (error) {
+    console.error("Get token cost by feature error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch token cost",
     });
   }
 });

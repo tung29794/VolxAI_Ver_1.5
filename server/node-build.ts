@@ -10,7 +10,11 @@ async function main() {
   // In production, serve the built SPA files
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  const distPath = path.join(__dirname, "../spa");
+  
+  // Use environment variable for SPA path, or fallback to relative path for development
+  const distPath = process.env.SPA_PATH || path.join(__dirname, "../spa");
+  
+  console.log("📁 Serving SPA from:", distPath);
 
   // Serve static files
   app.use(express.static(distPath));

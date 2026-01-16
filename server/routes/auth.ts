@@ -87,6 +87,12 @@ router.post("/register", async (req: Request, res: Response<LoginResponse>) => {
 
     const userId = (result as any).insertId;
 
+    // Initialize tokens_remaining for new user (10,000 free tokens)
+    await execute(
+      "UPDATE users SET tokens_remaining = ? WHERE id = ?",
+      [10000, userId]
+    );
+
     // Create free subscription for new user
     await execute(
       "INSERT INTO user_subscriptions (user_id, plan_type, tokens_limit, articles_limit, is_active) VALUES (?, ?, ?, ?, TRUE)",
@@ -262,9 +268,9 @@ router.get("/me", async (req: Request, res: Response) => {
       process.env.JWT_SECRET || "your-secret-key",
     ) as { userId: number };
 
-    // Get user with role
-    const user = await queryOne<User & { role?: string }>(
-      "SELECT id, email, username, full_name, avatar_url, bio, created_at, role FROM users WHERE id = ?",
+    // Get user with role and tokens_remaining
+    const user = await queryOne<User & { role?: string; tokens_remaining?: number }>(
+      "SELECT id, email, username, full_name, avatar_url, bio, created_at, role, tokens_remaining FROM users WHERE id = ?",
       [decoded.userId],
     );
 
@@ -277,7 +283,7 @@ router.get("/me", async (req: Request, res: Response) => {
 
     // Get user subscription
     let subscription = await queryOne<any>(
-      "SELECT id, plan_type, tokens_limit, articles_limit, is_active, expires_at FROM user_subscriptions WHERE user_id = ?",
+      "SELECT id, plan_type, tokens_limit, articles_limit, articles_used_this_month, is_active, expires_at FROM user_subscriptions WHERE user_id = ?",
       [decoded.userId],
     );
 
@@ -304,11 +310,16 @@ router.get("/me", async (req: Request, res: Response) => {
       }
     }
 
+    // Add tokens_remaining to subscription object for frontend
+    const subscriptionWithTokens = subscription 
+      ? { ...subscription, tokens_remaining: user.tokens_remaining || 0 }
+      : { plan_type: "free", tokens_remaining: user.tokens_remaining || 0 };
+
     return res.status(200).json({
       success: true,
       message: "User found",
       user,
-      subscription: subscription || { plan_type: "free" },
+      subscription: subscriptionWithTokens,
     });
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
@@ -618,6 +629,12 @@ router.post("/confirm-payment", async (req: Request, res: Response) => {
     await execute(
       "UPDATE user_subscriptions SET plan_type = ?, tokens_limit = ?, articles_limit = ?, updated_at = NOW() WHERE user_id = ?",
       [newPlan, newPlanDetails.tokens, newPlanDetails.articles, decoded.userId],
+    );
+
+    // CRITICAL: Update tokens_remaining in users table to match new plan
+    await execute(
+      "UPDATE users SET tokens_remaining = ? WHERE id = ?",
+      [newPlanDetails.tokens, decoded.userId]
     );
 
     // Record subscription history

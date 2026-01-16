@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test VND Regex Format</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .title { font-size: 14px; color: #666; margin-bottom: 10px; }
+        .amount { font-size: 32px; font-weight: bold; color: #22c55e; }
+        .method { font-size: 12px; color: #999; margin-top: 5px; }
+        h1 { text-align: center; }
+        .success { color: #22c55e; }
+        .fail { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test VND Format Methods</h1>
+        
+        <div class="card">
+            <div class="title">❌ Method 1: toLocaleString("vi-VN")</div>
+            <div class="amount" id="method1"></div>
+            <div class="method">Depends on browser locale</div>
+        </div>
+        
+        <div class="card">
+            <div class="title">✅ Method 2: Regex Replace (Recommended)</div>
+            <div class="amount" id="method2"></div>
+            <div class="method">Always works - locale independent</div>
+        </div>
+        
+        <div class="card">
+            <h3>Test Results:</h3>
+            <div id="results"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Method 1: toLocaleString (may fail)
+        const formatLocale = (amount) => {
+            return amount.toLocaleString("vi-VN") + "₫";
+        };
+        
+        // Method 2: Regex (always works!)
+        const formatRegex = (amount) => {
+            return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "₫";
+        };
+        
+        const testAmount = 18350000;
+        
+        // Display results
+        const result1 = formatLocale(testAmount);
+        const result2 = formatRegex(testAmount);
+        
+        document.getElementById('method1').textContent = result1;
+        document.getElementById('method2').textContent = result2;
+        
+        // Check if correct
+        const expected = "18.350.000₫";
+        const locale_works = result1 === expected;
+        const regex_works = result2 === expected;
+        
+        let html = '<ul>';
+        html += `<li class="${locale_works ? 'success' : 'fail'}">toLocaleString: ${result1} ${locale_works ? '✅' : '❌'}</li>`;
+        html += `<li class="${regex_works ? 'success' : 'fail'}">Regex: ${result2} ${regex_works ? '✅' : '❌'}</li>`;
+        html += '</ul>';
+        html += `<p><strong>Expected:</strong> ${expected}</p>`;
+        html += `<p><strong>Your browser locale:</strong> ${navigator.language}</p>`;
+        
+        if (!locale_works) {
+            html += '<p class="fail">⚠️ toLocaleString failed! Your browser locale is not vi-VN.</p>';
+            html += '<p class="success">✅ But Regex method works regardless!</p>';
+        } else {
+            html += '<p class="success">✅ Both methods work in your browser!</p>';
+        }
+        
+        document.getElementById('results').innerHTML = html;
+        
+        // Console tests
+        console.log('=== VND Format Tests ===');
+        console.log('Test amount:', testAmount);
+        console.log('Method 1 (toLocaleString):', result1);
+        console.log('Method 2 (Regex):', result2);
+        console.log('Expected:', expected);
+        console.log('Browser locale:', navigator.language);
+    </script>
+</body>
+</html>

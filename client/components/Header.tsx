@@ -8,6 +8,10 @@ import { buildApiUrl } from "@/lib/api";
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [tokensLimit, setTokensLimit] = useState<number | null>(null);
+  const [articleLimits, setArticleLimits] = useState<{
+    used: number;
+    limit: number;
+  } | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, logout, user } = useAuth();
@@ -28,7 +32,16 @@ export const Header = () => {
 
           const data = await response.json();
           if (data.success && data.subscription) {
-            setTokensLimit(data.subscription.tokens_limit);
+            // Use tokens_remaining (actual balance) not tokens_limit (plan limit)
+            setTokensLimit(data.subscription.tokens_remaining || 0);
+            
+            // Set article limits (only for non-admin users)
+            if (data.user?.role !== "admin") {
+              setArticleLimits({
+                used: data.subscription.articles_used_this_month || 0,
+                limit: data.subscription.articles_limit || 0,
+              });
+            }
           }
         } catch (error) {
           console.error("Failed to fetch subscription:", error);
@@ -85,6 +98,16 @@ export const Header = () => {
         <div className="hidden md:flex items-center gap-3">
           {isAuthenticated ? (
             <>
+              {/* Article Limits Display (only for non-admin users) */}
+              {user?.role !== "admin" && articleLimits !== null && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-secondary/10 border border-secondary/20 rounded-lg">
+                  <span className="text-sm font-medium text-foreground">
+                    📝 {articleLimits.used}/{articleLimits.limit} bài
+                  </span>
+                </div>
+              )}
+              
+              {/* Token Balance Display */}
               {tokensLimit !== null && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg">
                   <Zap className="w-4 h-4 text-primary" />

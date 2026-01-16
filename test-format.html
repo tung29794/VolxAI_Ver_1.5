@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test VND Format</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .result { font-size: 24px; font-weight: bold; color: #22c55e; }
+    </style>
+</head>
+<body>
+    <h1>Test VND Currency Formatting</h1>
+    
+    <div class="test">
+        <p>Input: 18350000</p>
+        <p class="result" id="test1"></p>
+    </div>
+    
+    <div class="test">
+        <p>Input: 1000000</p>
+        <p class="result" id="test2"></p>
+    </div>
+    
+    <div class="test">
+        <p>Input: 500000</p>
+        <p class="result" id="test3"></p>
+    </div>
+    
+    <script>
+        const formatVND = (amount) => {
+            return amount.toLocaleString("vi-VN") + "đ";
+        };
+        
+        document.getElementById('test1').textContent = formatVND(18350000);
+        document.getElementById('test2').textContent = formatVND(1000000);
+        document.getElementById('test3').textContent = formatVND(500000);
+        
+        console.log('Test 1:', formatVND(18350000));
+        console.log('Test 2:', formatVND(1000000));
+        console.log('Test 3:', formatVND(500000));
+    </script>
+</body>
+</html>

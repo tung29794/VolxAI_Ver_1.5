@@ -1,0 +1,77 @@
+/* Article Writer Publisher Admin Styles */
+
+.article-writer-publisher-info-box {
+    background: #f1f1f1;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 20px 0;
+}
+
+.article-writer-publisher-info-box h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #0073aa;
+}
+
+.article-writer-publisher-code {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    overflow-x: auto;
+    word-break: break-all;
+}
+
+.article-writer-publisher-token-display {
+    background: #f1f1f1;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    word-break: break-all;
+    user-select: all;
+}
+
+.article-writer-publisher-success {
+    color: #00a32a;
+    font-weight: bold;
+}
+
+.article-writer-publisher-error {
+    color: #d63638;
+    font-weight: bold;
+}
+
+.article-writer-publisher-info {
+    color: #0073aa;
+    font-weight: bold;
+}
+
+/* Table Styles */
+.wp-list-table code {
+    background: #f1f1f1;
+    padding: 2px 5px;
+    border-radius: 2px;
+    font-size: 12px;
+}
+
+/* Form Styles */
+.article-writer-publisher-form {
+    max-width: 600px;
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.article-writer-publisher-form .form-table {
+    margin-top: 20px;
+}
+
+.article-writer-publisher-form .submit {
+    margin-top: 20px;
+}

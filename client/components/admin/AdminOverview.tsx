@@ -4,6 +4,11 @@ import { Users, TrendingUp, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildAdminApiUrl } from "@/lib/api";
 
+// Helper function to format VND currency (force dot separator)
+const formatVND = (amount: number): string => {
+  return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "₫";
+};
+
 interface StatisticsData {
   totalUsers: number;
   freeUsers: number;
@@ -154,7 +159,7 @@ export default function AdminOverview() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="text-xl md:text-2xl font-bold">
-              {stats.totalRevenue.toLocaleString("vi-VN")}₫
+              {formatVND(stats.totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground">
               Từ tất cả các giao dịch
@@ -232,7 +237,7 @@ export default function AdminOverview() {
                         }}
                       />
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-foreground text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                        {item.amount.toLocaleString("vi-VN")}₫
+                        {formatVND(item.amount)}
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground text-center break-words">

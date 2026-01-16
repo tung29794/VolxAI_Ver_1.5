@@ -1,0 +1,76 @@
+
+> dev
+> vite
+
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+📊 Database Configuration:
+   Host: 103.221.221.67:3306
+   User: jybcaorr_lisaaccountcontentapi
+   Database: jybcaorr_lisacontentdbapi
+   Using environment variables from .env file
+Could not create upload directory: /home/jybcaorr/public_html/upload Error: ENOENT: no such file or directory, mkdir '/home/jybcaorr/public_html/upload'
+    at Object.mkdirSync (node:fs:1363:26)
+    at file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/.vite-temp/vite.config.ts.timestamp-1768226315438-3c3a4dd522ce8.mjs:6069:11
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async loadConfigFromBundledFile (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:35907:12)
+    at async bundleAndLoadConfigFile (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:35795:17)
+    at async loadConfigFromFile (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:35762:42)
+    at async resolveConfig (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:35411:22)
+    at async _createServer (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:25361:67)
+    at async CAC.<anonymous> (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/cli.js:572:18) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'mkdir',
+  path: '/home/jybcaorr/public_html/upload'
+}
+✓ Database pool created successfully
+
+  VITE v7.3.0  ready in 470 ms
+
+  ➜  Local:   http://localhost:8080/
+  ➜  Network: http://192.168.1.44:8080/
+  ➜  press h + enter to show help
+✗ Database connection failed!
+   Error: connect ETIMEDOUT
+   Code: ETIMEDOUT
+✗ Database connection failed
+8:59:36 PM [vite] server/routes/ai.ts changed, restarting server...
+✘ [ERROR] Expected "finally" but found ";"
+
+    server/routes/ai.ts:2800:1:
+      2800 │ };
+           │  ^
+           ╵  finally
+
+failed to load config from /Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/vite.config.ts
+8:59:36 PM [vite] Build failed with 1 error:
+server/routes/ai.ts:2800:1: ERROR: Expected "finally" but found ";"
+8:59:36 PM [vite] server restart failed
+8:59:54 PM [vite] server/routes/ai.ts changed, restarting server...
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+📊 Database Configuration:
+   Host: 103.221.221.67:3306
+   User: jybcaorr_lisaaccountcontentapi
+   Database: jybcaorr_lisacontentdbapi
+   Using environment variables from .env file
+Could not create upload directory: /home/jybcaorr/public_html/upload Error: ENOENT: no such file or directory, mkdir '/home/jybcaorr/public_html/upload'
+    at Object.mkdirSync (node:fs:1363:26)
+    at file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/.vite-temp/vite.config.ts.timestamp-1768226394309-2c67b0ba9d1e7.mjs:6069:11
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async loadConfigFromBundledFile (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:35907:12)
+    at async bundleAndLoadConfigFile (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:35795:17)
+    at async loadConfigFromFile (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:35762:42)
+    at async resolveConfig (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:35411:22)
+    at async _createServer (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:25361:67)
+    at async restartServer (file:///Users/tungnguyen/VolxAI_2_1_26/VolxAI_Ver_1.5/node_modules/vite/dist/node/chunks/config.js:25766:16) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'mkdir',
+  path: '/home/jybcaorr/public_html/upload'
+}
+✓ Database pool created successfully
+8:59:54 PM [vite] server restarted.
+✓ Database connection successful
+✓ Database connected

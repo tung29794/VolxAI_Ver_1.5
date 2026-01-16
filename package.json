@@ -1,5 +1,5 @@
 {
-  "name": "fusion-starter",
+  "name": "volxai-content-studio",
   "private": true,
   "type": "module",
   "pkg": {
@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run build:client && npm run build:server",
-    "build:client": "vite build",
+    "build:client": "vite build && ./post-build.sh",
     "build:server": "vite build --config vite.config.server.ts",
     "start": "node dist/server/node-build.mjs",
     "test": "vitest --run",
@@ -23,10 +23,12 @@
     "deploy:prod": "npm run build && FTP_HOST=103.221.221.67 FTP_USER=volxai@volxai.com FTP_PASS='Qnoc7vBSy8qh+BpV' node deploy.mjs"
   },
   "dependencies": {
+    "@types/multer": "^2.0.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^17.2.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
     "mysql2": "^3.6.5",
     "qrcode.react": "^4.2.0",
     "react-quill": "^2.0.0",

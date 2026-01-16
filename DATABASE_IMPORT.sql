@@ -209,6 +209,28 @@ VALUES
   (1, 'grow', 'professional', 475000, 'VND', 'monthly', 'completed', DATE_SUB(NOW(), INTERVAL 30 DAY));
 
 -- ========================================
+-- API KEYS TABLE
+-- ========================================
+CREATE TABLE IF NOT EXISTS api_keys (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  provider VARCHAR(100) NOT NULL COMMENT 'openai, serpapi, serper, zenserp, anthropic, google-ai, etc',
+  category VARCHAR(50) NOT NULL COMMENT 'content, search, etc',
+  api_key VARCHAR(500) NOT NULL COMMENT 'The actual API key',
+  description VARCHAR(255) COMMENT 'Description or label for this key',
+  is_active BOOLEAN DEFAULT TRUE,
+  quota_remaining INT COMMENT 'Remaining quota if applicable',
+  last_used_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  INDEX idx_provider (provider),
+  INDEX idx_category (category),
+  INDEX idx_is_active (is_active),
+  INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Centralized management of all API keys used by the application';
+
+-- ========================================
 -- END OF SCHEMA
 -- ========================================
 --
@@ -226,4 +248,5 @@ VALUES
 --    - password_reset_tokens
 --    - activity_log
 --    - subscription_history
+--    - api_keys
 --
