@@ -76,6 +76,89 @@ ${knowledge}
 ${basePrompt}`;
 }
 
+/**
+ * Format and split long paragraphs in HTML content
+ * Ensures each paragraph is wrapped in <p> tags and splits paragraphs longer than 100 words
+ */
+function formatAndSplitParagraphs(htmlContent: string): string {
+  console.log(`📝 [formatAndSplitParagraphs] Processing content...`);
+  
+  // Extract body content if wrapped in <body> tags
+  let content = htmlContent;
+  const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  if (bodyMatch) {
+    content = bodyMatch[1];
+  }
+
+  // Split by major HTML elements but preserve them
+  const lines = content.split(/\n+/);
+  const processed: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Skip if already a heading or list
+    if (/^<(h[1-6]|ul|ol|li)/i.test(trimmed)) {
+      processed.push(trimmed);
+      continue;
+    }
+
+    // Remove existing <p> tags to reprocess
+    let text = trimmed.replace(/<\/?p[^>]*>/gi, '').trim();
+    
+    // Skip if it's an HTML tag (img, div, etc)
+    if (/^<[a-z]/i.test(text) && !text.includes('>') === false) {
+      processed.push(trimmed);
+      continue;
+    }
+
+    // Count words (approximate, ignoring HTML tags)
+    const plainText = text.replace(/<[^>]+>/g, ' ');
+    const words = plainText.split(/\s+/).filter(w => w.length > 0);
+    const wordCount = words.length;
+
+    if (wordCount <= 100) {
+      // Paragraph is fine, just wrap in <p>
+      processed.push(`<p>${text}</p>`);
+    } else {
+      // Split into multiple paragraphs of ~80-100 words each
+      console.log(`   ⚠️ Long paragraph detected (${wordCount} words), splitting...`);
+      
+      const sentences = text.split(/([.!?]+\s+)/);
+      let currentParagraph: string[] = [];
+      let currentWordCount = 0;
+
+      for (let i = 0; i < sentences.length; i++) {
+        const sentence = sentences[i].trim();
+        if (!sentence) continue;
+
+        const sentenceWords = sentence.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(w => w.length > 0);
+        const sentenceWordCount = sentenceWords.length;
+
+        if (currentWordCount + sentenceWordCount > 100 && currentParagraph.length > 0) {
+          // Flush current paragraph
+          processed.push(`<p>${currentParagraph.join(' ')}</p>`);
+          currentParagraph = [sentence];
+          currentWordCount = sentenceWordCount;
+        } else {
+          currentParagraph.push(sentence);
+          currentWordCount += sentenceWordCount;
+        }
+      }
+
+      // Flush remaining
+      if (currentParagraph.length > 0) {
+        processed.push(`<p>${currentParagraph.join(' ')}</p>`);
+      }
+    }
+  }
+
+  const result = processed.join('\n\n');
+  console.log(`✅ [formatAndSplitParagraphs] Processed ${processed.length} paragraphs`);
+  return result;
+}
+
 interface OutlineResult {
   success: boolean;
   outline?: string;
@@ -112,14 +195,25 @@ async function callAI(
   temperature: number = 0.7
 ): Promise<{ success: boolean; content?: string; error?: string; tokensUsed?: number }> {
   try {
-    console.log(`🔵 [callAI] Starting AI call...`);
-    console.log(`   Provider: ${provider}`);
-    console.log(`   Model: ${model}`);
-    console.log(`   API Key: ${apiKey.substring(0, 10)}...`);
-    console.log(`   Max Tokens: ${maxTokens}`);
-    console.log(`   Temperature: ${temperature}`);
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🔵 [callAI] STARTING AI CALL`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   🏢 Provider: "${provider}" (type: ${typeof provider})`);
+    console.log(`   🤖 Model: "${model}"`);
+    console.log(`   🔑 API Key: ${apiKey.substring(0, 20)}...`);
+    console.log(`   📊 Max Tokens: ${maxTokens}`);
+    console.log(`   🌡️  Temperature: ${temperature}`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    
+    // Check provider type explicitly
+    console.log(`🔍 [callAI] Checking provider condition...`);
+    console.log(`   provider === "google-ai": ${provider === "google-ai"}`);
+    console.log(`   provider === "openai": ${provider === "openai"}`);
+    console.log(`   provider value: [${provider}]`);
+    console.log(`   provider length: ${provider.length}`);
     
     if (provider === "google-ai") {
+      console.log(`✅ [callAI] Provider matched "google-ai" - Will call Google AI API`);
       // Call Google AI (Gemini)
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       console.log(`🟢 [callAI] Calling Google AI API...`);
@@ -181,7 +275,10 @@ async function callAI(
       };
     } else {
       // Call OpenAI
+      console.log(`⚠️  [callAI] Provider did NOT match "google-ai" - Falling back to OpenAI`);
       console.log(`🟡 [callAI] Calling OpenAI API...`);
+      console.log(`   ⚠️  WARNING: API Key starts with: ${apiKey.substring(0, 20)}...`);
+      console.log(`   ⚠️  If this is a Google key (AIzaSy...), this will FAIL!`);
       
       const response = await fetch(
         "https://api.openai.com/v1/chat/completions",
@@ -295,11 +392,13 @@ async function getApiKeyForModel(
     };
   }
 
-  // Query model info from database
+  // Query model info from database - support both model_id and display_name
   console.log(`   Querying ai_models table for model: "${model}"`);
   const modelInfo = await query<any>(
-    `SELECT model_name, provider FROM ai_models WHERE model_name = ? AND is_active = TRUE LIMIT 1`,
-    [model]
+    `SELECT model_id, provider FROM ai_models 
+     WHERE (model_id = ? OR display_name = ?) AND is_active = TRUE 
+     LIMIT 1`,
+    [model, model]
   );
 
   if (modelInfo.length === 0) {
@@ -308,8 +407,8 @@ async function getApiKeyForModel(
     return null;
   }
 
-  const { model_name, provider } = modelInfo[0];
-  console.log(`   Found model in DB: model_name="${model_name}", provider="${provider}"`);
+  const { model_id, provider } = modelInfo[0];
+  console.log(`   Found model in DB: model_id="${model_id}", provider="${provider}"`);
 
   // Get API key for this provider
   console.log(`   Querying api_keys for provider: "${provider}"`);
@@ -327,12 +426,12 @@ async function getApiKeyForModel(
   }
 
   console.log(`✅ [getApiKeyForModel] Found API key for provider "${provider}"`);
-  console.log(`   Returning: provider="${provider}", actualModel="${model_name}", apiKey=${apiKeys[0].api_key.substring(0, 10)}...`);
+  console.log(`   Returning: provider="${provider}", actualModel="${model_id}", apiKey=${apiKeys[0].api_key.substring(0, 10)}...`);
 
   return {
     apiKey: apiKeys[0].api_key,
     provider: provider,
-    actualModel: model_name,
+    actualModel: model_id,
   };
 }
 
@@ -436,8 +535,10 @@ export async function generateOutline(
     }
 
     // Get API key
+    console.log(`🔑 [generateOutline] Getting API key for model: "${model}"`);
     const modelConfig = await getApiKeyForModel(model, false);
     if (!modelConfig) {
+      console.error(`❌ [generateOutline] Failed to get API key for model: "${model}"`);
       return {
         success: false,
         error: "API key not configured",
@@ -445,6 +546,8 @@ export async function generateOutline(
     }
 
     const { apiKey, provider, actualModel } = modelConfig;
+    console.log(`✅ [generateOutline] Got config: provider="${provider}", actualModel="${actualModel}", apiKey="${apiKey.substring(0, 15)}..."`);
+    console.log(`🎨 [generateOutline] Will call callAI() with these parameters...`);
 
     // Determine outline config based on length
     const outlineConfig: Record<
@@ -1025,20 +1128,20 @@ export async function generateArticleContent(
       if (outlineType === "no-outline" || outlineType === "ai-outline") {
         // Rules for No Outline mode
         if (lengthKey === "short") {
-          outlineMode = "Write 1-2 paragraphs per H2 heading. Each paragraph MUST be at least 80 words.";
-          paragraphWords = "80";
+          outlineMode = "Write 1-2 paragraphs per H2 heading. Each paragraph MUST be 60-100 words (never exceed 100 words per paragraph).";
+          paragraphWords = "60-100";
         } else if (lengthKey === "medium") {
-          outlineMode = "Write 2-3 paragraphs per H2 heading. Each paragraph MUST be at least 100 words.";
-          paragraphWords = "100";
+          outlineMode = "Write 2-3 paragraphs per H2 heading. Each paragraph MUST be 80-100 words (never exceed 100 words per paragraph).";
+          paragraphWords = "80-100";
         } else {
           // long
-          outlineMode = "Write 3-4 paragraphs per H2 heading. Each paragraph MUST be at least 100 words.";
-          paragraphWords = "100";
+          outlineMode = "Write 3-4 paragraphs per H2 heading. Each paragraph MUST be 80-100 words (never exceed 100 words per paragraph).";
+          paragraphWords = "80-100";
         }
       } else {
         // Your Outline mode - default to Medium rules
-        outlineMode = "Write 2-3 paragraphs per heading in the outline. Each paragraph MUST be at least 100 words.";
-        paragraphWords = "100";
+        outlineMode = "Write 2-3 paragraphs per heading in the outline. Each paragraph MUST be 80-100 words (never exceed 100 words per paragraph).";
+        paragraphWords = "80-100";
       }
 
       const outlineInstruction = finalOutline
@@ -1158,6 +1261,9 @@ Write the complete article now in HTML format.`;
         error: "No content generated",
       };
     }
+
+    // POST-PROCESS: Format paragraphs and split long ones
+    articleContent = formatAndSplitParagraphs(articleContent);
 
     // Deduct tokens
     const deductResult = await deductTokens(

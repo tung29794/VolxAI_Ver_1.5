@@ -153,11 +153,20 @@ export async function generateCompleteArticle(
 
     // STEP 5: Create article record in database
     console.log(`📝 [ArticleGenService] Step 5/5: Creating article record...`);
+    
+    // Split keyword into array if it contains commas
+    const keywordsArray = options.keyword.includes(',') 
+      ? options.keyword.split(',').map(k => k.trim()).filter(k => k.length > 0)
+      : [options.keyword];
+    
+    const keywordsJson = JSON.stringify(keywordsArray);
+    console.log(`   Keywords array: ${keywordsArray.length} items:`, keywordsArray);
+    
     const insertResult = await dbExecute(
       `INSERT INTO articles (
-        user_id, title, seo_title, meta_description, content, keyword, status
-      ) VALUES (?, ?, ?, ?, '', ?, 'draft')`,
-      [options.userId, articleTitle, seoTitle, metaDescription, options.keyword]
+        user_id, title, seo_title, meta_description, content, primary_keyword, keywords, status
+      ) VALUES (?, ?, ?, ?, '', ?, ?, 'draft')`,
+      [options.userId, articleTitle, seoTitle, metaDescription, options.keyword, keywordsJson]
     );
 
     const articleId = (insertResult as any).insertId;

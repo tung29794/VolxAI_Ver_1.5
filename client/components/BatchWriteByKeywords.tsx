@@ -196,7 +196,7 @@ function BatchWriteByKeywords({ onBack }: BatchWriteByKeywordsProps) {
           job_type: "batch_keywords",
           keywords: keywords,
           settings: {
-            model: formData.useGoogleSearch ? "Gemini 2.5 Flash" : formData.model,
+            model: formData.useGoogleSearch ? "gemini-2.5-flash" : formData.model,
             language: formData.language,
             tone: formData.tone,
             length: formData.outlineLength,
@@ -570,7 +570,7 @@ du lịch đà nẵng, du lịch thành phố đà nẵng"
               onChange={(e) => setFormData({
                 ...formData,
                 useGoogleSearch: e.target.checked,
-                model: e.target.checked ? "Gemini 2.5 Flash" : formData.model
+                model: e.target.checked ? "gemini-2.5-flash" : formData.model
               })}
               disabled={isGenerating}
               className="mt-1 w-4 h-4"
