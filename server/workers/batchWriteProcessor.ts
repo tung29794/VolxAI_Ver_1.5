@@ -120,6 +120,7 @@ async function processJob(job: BatchJob) {
 
     let articleIds: number[] = [];
     const startIndex = job.current_item_index || 0;
+    let hasOverloadError = false;  // Track if any error is due to API overload
 
     // Process each keyword line sequentially
     for (let i = startIndex; i < keywords.length; i++) {
@@ -171,32 +172,83 @@ async function processJob(job: BatchJob) {
 
           console.log(`✅ [BatchWrite] Article #${result.articleId} completed (${result.tokensUsed} tokens)`);
         } else {
+          // Article failed - DELETE it to avoid leaving empty articles
+          if (result.articleId) {
+            await execute(
+              `DELETE FROM articles WHERE id = ?`,
+              [result.articleId]
+            );
+            console.log(`🗑️ [BatchWrite] Deleted failed article #${result.articleId}`);
+          }
+
+          // Check if error is due to API overload
+          if (result.error && result.error.toLowerCase().includes('overload')) {
+            hasOverloadError = true;
+            console.log(`⚠️ [BatchWrite] Detected API overload error`);
+          }
+
           await execute(
             `UPDATE batch_jobs SET failed_items = failed_items + 1, current_item_index = ?, last_activity_at = NOW() WHERE id = ?`,
             [i + 1, job.id]
           );
 
           console.log(`❌ [BatchWrite] Article failed: ${result.error}`);
+          console.log(`⏹️  [BatchWrite] Stopping batch job due to article failure`);
+          
+          // STOP processing - break out of loop
+          break;
         }
       } catch (error: any) {
         console.error(`[BatchWrite] Error processing keyword:`, error);
+        
+        // Check if exception is due to overload
+        const errorMsg = error.message?.toLowerCase() || '';
+        if (errorMsg.includes('overload') || errorMsg.includes('unavailable') || errorMsg.includes('503')) {
+          hasOverloadError = true;
+          console.log(`⚠️ [BatchWrite] Detected API overload exception`);
+        }
+
         await execute(
           `UPDATE batch_jobs SET failed_items = failed_items + 1, current_item_index = ?, last_activity_at = NOW() WHERE id = ?`,
           [i + 1, job.id]
         );
+        
+        console.log(`⏹️  [BatchWrite] Stopping batch job due to exception`);
+        
+        // STOP processing - break out of loop
+        break;
       }
 
       // Small delay between articles
       await sleep(1000);
     }
 
-    // Job completed successfully
-    await execute(
-      `UPDATE batch_jobs SET status = 'completed', completed_at = NOW(), last_activity_at = NOW() WHERE id = ?`,
+    // Check if any articles succeeded
+    const finalJob = await query<BatchJob>(
+      `SELECT completed_items, failed_items FROM batch_jobs WHERE id = ?`,
       [job.id]
     );
+    const final = finalJob?.[0];
 
-    console.log(`✅ [BatchWrite] Job #${job.id} completed successfully`);
+    // Only mark as completed if at least 1 article succeeded
+    if (final && final.completed_items > 0) {
+      await execute(
+        `UPDATE batch_jobs SET status = 'completed', completed_at = NOW(), last_activity_at = NOW() WHERE id = ?`,
+        [job.id]
+      );
+      console.log(`✅ [BatchWrite] Job #${job.id} completed (${final.completed_items}/${final.completed_items + final.failed_items} succeeded)`);
+    } else {
+      // All articles failed - check if it's due to overload
+      const errorMsg = hasOverloadError 
+        ? 'Không hoàn thành - AI đang quá tải, xin vui lòng chọn Model khác hoặc quay lại sau'
+        : 'All articles failed to generate';
+      
+      await execute(
+        `UPDATE batch_jobs SET status = 'failed', error_message = ?, completed_at = NOW(), last_activity_at = NOW() WHERE id = ?`,
+        [errorMsg, job.id]
+      );
+      console.log(`❌ [BatchWrite] Job #${job.id} failed: ${errorMsg}`);
+    }
 
   } catch (error: any) {
     console.error(`[BatchWrite] Error processing job #${job.id}:`, error);
@@ -226,6 +278,7 @@ async function processKeywordLine(
   settings: JobData['settings']
 ): Promise<{ success: boolean; articleId?: number; tokensUsed: number; error?: string }> {
   let totalTokensUsed = 0;
+  let articleId: number | undefined = undefined;
 
   try {
     // Parse keywords from line
@@ -426,8 +479,10 @@ async function processKeywordLine(
 
   } catch (error: any) {
     console.error(`  ❌ Error in processKeywordLine:`, error.message);
+    // Note: articleId may be undefined if error happened before article creation
     return {
       success: false,
+      articleId,  // Return articleId if it was created before error
       tokensUsed: totalTokensUsed,
       error: error.message || 'Unknown error'
     };

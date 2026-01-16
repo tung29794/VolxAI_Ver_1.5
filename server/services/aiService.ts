@@ -113,42 +113,45 @@ function formatAndSplitParagraphs(htmlContent: string): string {
       continue;
     }
 
-    // Count characters (not words!) - user requirement is 100 characters per paragraph
-    const plainText = text.replace(/<[^>]+>/g, ' ');
-    const charCount = plainText.length;
+    // Count words (not characters!) - requirement is max 100 words per paragraph
+    const plainText = text.replace(/<[^>]+>/g, ' ').trim();
+    const words = plainText.split(/\s+/).filter(w => w.length > 0);
+    const wordCount = words.length;
 
-    if (charCount <= 100) {
+    if (wordCount <= 100) {
       // Paragraph is fine, just wrap in <p>
       processed.push(`<p>${text}</p>`);
     } else {
-      // Split into multiple paragraphs of ~80-100 CHARACTERS each
-      console.log(`   ⚠️ Long paragraph detected (${charCount} characters), splitting...`);
+      // Split into multiple paragraphs by sentences, keeping each under 100 words
+      console.log(`   ⚠️ Long paragraph detected (${wordCount} words), splitting by sentences...`);
       
-      // Split by sentences first
-      const sentences = text.split(/([.!?]+\s+)/);
+      // Split by sentence-ending punctuation but keep the punctuation
+      const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z])/);
       let currentParagraph: string[] = [];
-      let currentCharCount = 0;
+      let currentWordCount = 0;
 
-      for (let i = 0; i < sentences.length; i++) {
-        const sentence = sentences[i].trim();
-        if (!sentence) continue;
+      for (const sentence of sentences) {
+        if (!sentence || !sentence.trim()) continue;
 
-        const sentenceCharCount = sentence.replace(/<[^>]+>/g, ' ').length;
+        // Count words in this sentence
+        const sentencePlain = sentence.replace(/<[^>]+>/g, ' ').trim();
+        const sentenceWords = sentencePlain.split(/\s+/).filter(w => w.length > 0);
+        const sentenceWordCount = sentenceWords.length;
 
-        if (currentCharCount + sentenceCharCount > 100 && currentParagraph.length > 0) {
-          // Flush current paragraph
-          processed.push(`<p>${currentParagraph.join(' ')}</p>`);
+        // If adding this sentence exceeds 100 words AND we have content, flush
+        if (currentWordCount + sentenceWordCount > 100 && currentParagraph.length > 0) {
+          processed.push(`<p>${currentParagraph.join(' ').trim()}</p>`);
           currentParagraph = [sentence];
-          currentCharCount = sentenceCharCount;
+          currentWordCount = sentenceWordCount;
         } else {
           currentParagraph.push(sentence);
-          currentCharCount += sentenceCharCount;
+          currentWordCount += sentenceWordCount;
         }
       }
 
       // Flush remaining
       if (currentParagraph.length > 0) {
-        processed.push(`<p>${currentParagraph.join(' ')}</p>`);
+        processed.push(`<p>${currentParagraph.join(' ').trim()}</p>`);
       }
     }
   }
@@ -204,12 +207,8 @@ async function callAI(
     console.log(`   🌡️  Temperature: ${temperature}`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
     
-    // Check provider type explicitly
-    console.log(`🔍 [callAI] Checking provider condition...`);
-    console.log(`   provider === "google-ai": ${provider === "google-ai"}`);
-    console.log(`   provider === "openai": ${provider === "openai"}`);
-    console.log(`   provider value: [${provider}]`);
-    console.log(`   provider length: ${provider.length}`);
+    // Route to appropriate provider handler
+    console.log(`🔍 [callAI] Routing to provider handler...`);
     
     if (provider === "google-ai") {
       console.log(`✅ [callAI] Provider matched "google-ai" - Will call Google AI API`);
@@ -310,12 +309,9 @@ async function callAI(
         content: content,
         tokensUsed: tokensUsed,
       };
-    } else {
-      // Call OpenAI
-      console.log(`⚠️  [callAI] Provider did NOT match "google-ai" - Falling back to OpenAI`);
+    } else if (provider === "openai") {
+      // Call OpenAI API
       console.log(`🟡 [callAI] Calling OpenAI API...`);
-      console.log(`   ⚠️  WARNING: API Key starts with: ${apiKey.substring(0, 20)}...`);
-      console.log(`   ⚠️  If this is a Google key (AIzaSy...), this will FAIL!`);
       
       const response = await fetch(
         "https://api.openai.com/v1/chat/completions",
@@ -339,7 +335,7 @@ async function callAI(
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("OpenAI API error:", errorData);
+        console.error("❌ [callAI] OpenAI API error:", errorData);
         return {
           success: false,
           error: `OpenAI API error: ${errorData.error?.message || 'Unknown error'}`,
@@ -358,10 +354,22 @@ async function callAI(
 
       const tokensUsed = calculateActualTokens(data);
 
+      console.log(`✅ [callAI] OpenAI success! Generated ${content.length} chars, ${tokensUsed} tokens`);
+      console.log(`   Cleaned content: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`);
+
       return {
         success: true,
         content: content,
         tokensUsed: tokensUsed,
+      };
+    } else {
+      // Unsupported provider
+      console.error(`❌ [callAI] Unsupported provider: "${provider}"`);
+      console.log(`   Supported providers: "openai", "google-ai"`);
+      console.log(`   For new providers, add support in callAI() function`);
+      return {
+        success: false,
+        error: `Unsupported provider: "${provider}". Please configure API and add provider handler in callAI() function.`,
       };
     }
   } catch (error: any) {
