@@ -179,10 +179,10 @@ async function processJob(job: BatchJob) {
             [i + 1, JSON.stringify(articleIds), result.tokensUsed || 0, job.id]
           );
 
-          // Only reduce article_limit when article is successfully created
+          // Only reduce articles_limit when article is successfully created
           // Failed articles are deleted, so we don't reduce the limit for them
           await execute(
-            `UPDATE users SET article_limit = article_limit - 1 WHERE id = ? AND article_limit > 0`,
+            `UPDATE user_subscriptions SET articles_limit = articles_limit - 1 WHERE user_id = ? AND articles_limit > 0`,
             [job.user_id]
           );
 
