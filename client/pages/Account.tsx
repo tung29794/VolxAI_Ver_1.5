@@ -64,19 +64,27 @@ export default function Account() {
   // Handle URL query params for tab navigation
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
-    const tabParam = searchParams.get('tab');
+    const tabParam = searchParams.get("tab");
     if (tabParam && isValidTab(tabParam)) {
       setActiveTab(tabParam as AccountTab);
       // Clear the URL param after setting the tab
-      navigate('/account', { replace: true });
+      navigate("/account", { replace: true });
     }
   }, [location.search, navigate]);
 
   // Helper function to validate tab
   const isValidTab = (tab: string): boolean => {
     const validTabs: AccountTab[] = [
-      "profile", "write", "batch", "rewrite", "auto-blog", 
-      "optimize", "articles", "batch-jobs", "auto-index", "website"
+      "profile",
+      "write",
+      "batch",
+      "rewrite",
+      "auto-blog",
+      "optimize",
+      "articles",
+      "batch-jobs",
+      "auto-index",
+      "website",
     ];
     return validTabs.includes(tab as AccountTab);
   };
@@ -391,7 +399,7 @@ export default function Account() {
     try {
       setIsGenerating(true);
       setGenerationFormData(formData);
-      
+
       // Ẩn sidebar khi bắt đầu generate
       setSidebarOpen(false);
 
@@ -408,7 +416,7 @@ export default function Account() {
     try {
       setIsGenerating(true);
       setGenerationFormData({ ...formData, isToplist: true });
-      
+
       // Ẩn sidebar khi bắt đầu generate
       setSidebarOpen(false);
 
@@ -425,7 +433,7 @@ export default function Account() {
     setIsGenerating(false);
     setGenerationFormData(null);
     setActiveWritingFeature(null);
-    
+
     // Hiện lại sidebar
     setSidebarOpen(true);
 
@@ -700,123 +708,123 @@ export default function Account() {
             </div>
 
             {/* Menu Items */}
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {menuItems.map((item) => {
-              if (item.isGroup) {
-                const Icon = item.icon;
-                const isExpanded = expandedMenus[item.id];
-                return (
-                  <div key={item.id}>
-                    <button
-                      onClick={() => toggleMenu(item.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                        isExpanded
-                          ? "bg-primary/10"
-                          : "text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
-                      {sidebarOpen && (
-                        <div className="text-left flex-1 min-w-0 flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-sm truncate">
-                              {item.label}
+            <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+              {menuItems.map((item) => {
+                if (item.isGroup) {
+                  const Icon = item.icon;
+                  const isExpanded = expandedMenus[item.id];
+                  return (
+                    <div key={item.id}>
+                      <button
+                        onClick={() => toggleMenu(item.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                          isExpanded
+                            ? "bg-primary/10"
+                            : "text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Icon className="w-5 h-5 flex-shrink-0" />
+                        {sidebarOpen && (
+                          <div className="text-left flex-1 min-w-0 flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-sm truncate">
+                                {item.label}
+                              </div>
                             </div>
+                            <ChevronDown
+                              className={`w-4 h-4 transition-transform flex-shrink-0 ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
+                            />
                           </div>
-                          <ChevronDown
-                            className={`w-4 h-4 transition-transform flex-shrink-0 ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
-                          />
+                        )}
+                      </button>
+                      {isExpanded && sidebarOpen && item.children && (
+                        <div className="ml-6 space-y-1 mt-1">
+                          {item.children.map((child) => {
+                            const ChildIcon = child.icon;
+                            return (
+                              <button
+                                key={child.id}
+                                onClick={() => {
+                                  setActiveTab(child.id as AccountTab);
+                                  if (window.innerWidth < 768) {
+                                    setSidebarOpen(false);
+                                  }
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
+                                  activeTab === child.id
+                                    ? "bg-primary text-white"
+                                    : "text-foreground hover:bg-muted"
+                                }`}
+                              >
+                                <ChildIcon className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{child.label}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
-                    </button>
-                    {isExpanded && sidebarOpen && item.children && (
-                      <div className="ml-6 space-y-1 mt-1">
-                        {item.children.map((child) => {
-                          const ChildIcon = child.icon;
-                          return (
-                            <button
-                              key={child.id}
-                              onClick={() => {
-                                setActiveTab(child.id as AccountTab);
-                                if (window.innerWidth < 768) {
-                                  setSidebarOpen(false);
-                                }
-                              }}
-                              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
-                                activeTab === child.id
-                                  ? "bg-primary text-white"
-                                  : "text-foreground hover:bg-muted"
-                              }`}
-                            >
-                              <ChildIcon className="w-4 h-4 flex-shrink-0" />
-                              <span className="truncate">{child.label}</span>
-                            </button>
-                          );
-                        })}
+                    </div>
+                  );
+                }
+
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id as AccountTab);
+                      if (window.innerWidth < 768) {
+                        setSidebarOpen(false);
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                      activeTab === item.id
+                        ? "bg-primary text-white"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    {sidebarOpen && (
+                      <div className="text-left flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">
+                          {item.label}
+                        </div>
+                        <div className="text-xs opacity-75 hidden sm:block truncate">
+                          {item.description}
+                        </div>
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
-              }
+              })}
+            </nav>
 
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id as AccountTab);
-                    if (window.innerWidth < 768) {
-                      setSidebarOpen(false);
-                    }
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                    activeTab === item.id
-                      ? "bg-primary text-white"
-                      : "text-foreground hover:bg-muted"
-                  }`}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  {sidebarOpen && (
-                    <div className="text-left flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">
-                        {item.label}
-                      </div>
-                      <div className="text-xs opacity-75 hidden sm:block truncate">
-                        {item.description}
-                      </div>
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* User Info & Logout */}
-          <div className="p-4 border-t border-border space-y-3">
-            {sidebarOpen && (
-              <div className="text-sm min-w-0">
-                <p className="font-medium text-foreground truncate">
-                  {user?.username || "User"}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {user?.email || "user@example.com"}
-                </p>
-              </div>
-            )}
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              className={`w-full text-sm ${sidebarOpen ? "" : "p-2"}`}
-              size="sm"
-              disabled={logoutLoading}
-            >
-              <LogOut className="w-4 h-4" />
-              {sidebarOpen && "Đăng xuất"}
-            </Button>
+            {/* User Info & Logout */}
+            <div className="p-4 border-t border-border space-y-3">
+              {sidebarOpen && (
+                <div className="text-sm min-w-0">
+                  <p className="font-medium text-foreground truncate">
+                    {user?.username || "User"}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user?.email || "user@example.com"}
+                  </p>
+                </div>
+              )}
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                className={`w-full text-sm ${sidebarOpen ? "" : "p-2"}`}
+                size="sm"
+                disabled={logoutLoading}
+              >
+                <LogOut className="w-4 h-4" />
+                {sidebarOpen && "Đăng xuất"}
+              </Button>
+            </div>
           </div>
-        </div>
         )}
 
         {/* Main Content */}
@@ -1378,9 +1386,9 @@ export default function Account() {
                       </div>
 
                       {/* Viết với trình soạn thảo AI */}
-                      <div 
+                      <div
                         className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                        onClick={() => navigate('/write-article')}
+                        onClick={() => navigate("/write-article")}
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center justify-center w-12 h-12 bg-pink-100 rounded-lg">
@@ -1442,9 +1450,11 @@ export default function Account() {
                     {/* Batch Writing Features Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {/* Viết theo danh sách từ khoá */}
-                      <div 
+                      <div
                         className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                        onClick={() => setActiveWritingFeature("batch-keywords")}
+                        onClick={() =>
+                          setActiveWritingFeature("batch-keywords")
+                        }
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
@@ -1480,9 +1490,7 @@ export default function Account() {
             )}
 
             {/* Rewrite Section - Viết lại */}
-            {activeTab === "rewrite" && (
-              <RewriteForm />
-            )}
+            {activeTab === "rewrite" && <RewriteForm />}
 
             {/* Auto-blogging Section */}
             {activeTab === "auto-blog" && (
@@ -1543,14 +1551,10 @@ export default function Account() {
             )}
 
             {/* Articles Section */}
-            {activeTab === "articles" && (
-              <UserArticles />
-            )}
+            {activeTab === "articles" && <UserArticles />}
 
             {/* Batch Jobs Section */}
-            {activeTab === "batch-jobs" && (
-              <BatchJobsList />
-            )}
+            {activeTab === "batch-jobs" && <BatchJobsList />}
 
             {/* Auto-indexing Section */}
             {activeTab === "auto-index" && (

@@ -10,13 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ChevronLeft,
-  FileText,
-  Sparkles,
-  Zap,
-  Loader2,
-} from "lucide-react";
+import { ChevronLeft, FileText, Sparkles, Zap, Loader2 } from "lucide-react";
 import { buildApiUrl } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -153,7 +147,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
     const fetchModels = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || "https://api.volxai.com"}/api/models`
+          `${import.meta.env.VITE_API_URL || "https://api.volxai.com"}/api/models`,
         );
         const data = await response.json();
         if (data.success && data.models.length > 0) {
@@ -201,7 +195,6 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
     fetchWebsites();
   }, []);
 
-
   // Validate and submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,7 +223,9 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
 
       // Add website knowledge if selected
       if (commonData.websiteId) {
-        const website = websites.find((w) => w.id === parseInt(commonData.websiteId));
+        const website = websites.find(
+          (w) => w.id === parseInt(commonData.websiteId),
+        );
         if (website?.knowledge) {
           payload.websiteKnowledge = website.knowledge;
         }
@@ -361,7 +356,9 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
 
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-4xl font-bold text-foreground">Viết lại bài viết</h1>
+        <h1 className="text-4xl font-bold text-foreground">
+          Viết lại bài viết
+        </h1>
         <p className="text-lg text-muted-foreground">
           Chọn phương pháp viết lại phù hợp với nhu cầu của bạn
         </p>
@@ -385,7 +382,9 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
               <h3 className="font-semibold text-foreground mb-1">
                 {option.label}
               </h3>
-              <p className="text-sm text-muted-foreground">{option.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {option.description}
+              </p>
             </button>
           );
         })}
@@ -395,15 +394,20 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Common Options */}
         <div className="bg-white rounded-2xl border border-border p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Tùy chọn chung</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            Tùy chọn chung
+          </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Language Selection */}
             <div className="space-y-2">
               <Label htmlFor="language">Ngôn ngữ viết</Label>
-              <Select value={commonData.language} onValueChange={(value) =>
-                setCommonData((prev) => ({ ...prev, language: value }))
-              }>
+              <Select
+                value={commonData.language}
+                onValueChange={(value) =>
+                  setCommonData((prev) => ({ ...prev, language: value }))
+                }
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -428,7 +432,9 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
                 disabled={loadingModels}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingModels ? "Đang tải..." : "Chọn model"} />
+                  <SelectValue
+                    placeholder={loadingModels ? "Đang tải..." : "Chọn model"}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {models.map((model) => (
