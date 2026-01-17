@@ -121,6 +121,8 @@ async function processJob(job: BatchJob) {
     let articleIds: number[] = [];
     const startIndex = job.current_item_index || 0;
     let hasOverloadError = false;  // Track if any error is due to API overload
+    let failedKeywords: string[] = [];  // Track failed keywords for error message
+    const MAX_FAILURES = 5;  // Stop batch job if 5+ articles fail
 
     // Process each keyword line sequentially
     for (let i = startIndex; i < keywords.length; i++) {
@@ -139,7 +141,8 @@ async function processJob(job: BatchJob) {
         return;
       }
 
-      // Check user limits
+      // Check user limits BEFORE attempting to write
+      // If either tokens or articles_limit is exhausted, pause the job
       const users = await query<any>("SELECT tokens_remaining, article_limit FROM users WHERE id = ?", [job.user_id]);
       const user = users?.[0];
       if (!user) {
@@ -148,12 +151,12 @@ async function processJob(job: BatchJob) {
       }
 
       if (user.tokens_remaining <= 0) {
-        await pauseJob(job.id, i, `Insufficient tokens at article ${i + 1}/${keywords.length}`);
+        await pauseJob(job.id, i, `Insufficient tokens at article ${i + 1}/${keywords.length}. Please upgrade or wait for token reset.`);
         return;
       }
 
       if (user.article_limit <= 0) {
-        await pauseJob(job.id, i, `Article limit reached at article ${i + 1}/${keywords.length}`);
+        await pauseJob(job.id, i, `Article limit reached at article ${i + 1}/${keywords.length}. Please upgrade your plan.`);
         return;
       }
 
@@ -165,12 +168,20 @@ async function processJob(job: BatchJob) {
         if (result.success && result.articleId) {
           articleIds.push(result.articleId);
           
+          // Update batch job progress
           await execute(
             `UPDATE batch_jobs SET completed_items = completed_items + 1, current_item_index = ?, article_ids = ?, tokens_used = tokens_used + ?, last_activity_at = NOW() WHERE id = ?`,
             [i + 1, JSON.stringify(articleIds), result.tokensUsed || 0, job.id]
           );
 
-          console.log(`✅ [BatchWrite] Article #${result.articleId} completed (${result.tokensUsed} tokens)`);
+          // Only reduce article_limit when article is successfully created
+          // Failed articles are deleted, so we don't reduce the limit for them
+          await execute(
+            `UPDATE users SET article_limit = article_limit - 1 WHERE id = ? AND article_limit > 0`,
+            [job.user_id]
+          );
+
+          console.log(`✅ [BatchWrite] Article #${result.articleId} completed (${result.tokensUsed} tokens, article_limit -1)`);
         } else {
           // Article failed - DELETE it to avoid leaving empty articles
           if (result.articleId) {
@@ -180,6 +191,10 @@ async function processJob(job: BatchJob) {
             );
             console.log(`🗑️ [BatchWrite] Deleted failed article #${result.articleId}`);
           }
+
+          // Track failed keyword
+          failedKeywords.push(keywordLine);
+          console.log(`❌ [BatchWrite] Failed keyword (#${failedKeywords.length}): "${keywordLine}"`);
 
           // Check if error is due to API overload
           if (result.error && result.error.toLowerCase().includes('overload')) {
@@ -192,15 +207,21 @@ async function processJob(job: BatchJob) {
             [i + 1, job.id]
           );
 
-          console.log(`❌ [BatchWrite] Article failed: ${result.error}`);
-          console.log(`⏹️  [BatchWrite] Stopping batch job due to article failure`);
+          console.log(`   Error: ${result.error}`);
           
-          // STOP processing - break out of loop
-          break;
+          // Check if failures >= MAX_FAILURES
+          if (failedKeywords.length >= MAX_FAILURES) {
+            console.log(`⏹️  [BatchWrite] Stopping batch job - ${MAX_FAILURES} articles failed`);
+            break;
+          }
         }
       } catch (error: any) {
         console.error(`[BatchWrite] Error processing keyword:`, error);
         
+        // Track failed keyword
+        failedKeywords.push(keywordLine);
+        console.log(`❌ [BatchWrite] Exception in keyword (#${failedKeywords.length}): "${keywordLine}"`);
+
         // Check if exception is due to overload
         const errorMsg = error.message?.toLowerCase() || '';
         if (errorMsg.includes('overload') || errorMsg.includes('unavailable') || errorMsg.includes('503')) {
@@ -213,10 +234,13 @@ async function processJob(job: BatchJob) {
           [i + 1, job.id]
         );
         
-        console.log(`⏹️  [BatchWrite] Stopping batch job due to exception`);
+        console.log(`   Error: ${error.message}`);
         
-        // STOP processing - break out of loop
-        break;
+        // Check if failures >= MAX_FAILURES
+        if (failedKeywords.length >= MAX_FAILURES) {
+          console.log(`⏹️  [BatchWrite] Stopping batch job - ${MAX_FAILURES} articles failed`);
+          break;
+        }
       }
 
       // Small delay between articles
@@ -232,16 +256,42 @@ async function processJob(job: BatchJob) {
 
     // Only mark as completed if at least 1 article succeeded
     if (final && final.completed_items > 0) {
+      let errorMsg = '';
+      
+      // If there are failed keywords, include them in error message
+      if (failedKeywords.length > 0) {
+        errorMsg = `${failedKeywords.length} bài viết thất bại: ${failedKeywords.join(', ')}`;
+        // Truncate if too long (MySQL TEXT limit is safer with 1000 chars)
+        if (errorMsg.length > 1000) {
+          errorMsg = errorMsg.substring(0, 997) + '...';
+        }
+      }
+      
+      console.log(`📝 [BatchWrite] Setting error_message for completed job: "${errorMsg}"`);
+      
       await execute(
-        `UPDATE batch_jobs SET status = 'completed', completed_at = NOW(), last_activity_at = NOW() WHERE id = ?`,
-        [job.id]
+        `UPDATE batch_jobs SET status = 'completed', error_message = ?, completed_at = NOW(), last_activity_at = NOW() WHERE id = ?`,
+        [errorMsg, job.id]
       );
       console.log(`✅ [BatchWrite] Job #${job.id} completed (${final.completed_items}/${final.completed_items + final.failed_items} succeeded)`);
+      if (errorMsg) console.log(`   Failed keywords saved: ${errorMsg}`);
     } else {
       // All articles failed - check if it's due to overload
-      const errorMsg = hasOverloadError 
-        ? 'Không hoàn thành - AI đang quá tải, xin vui lòng chọn Model khác hoặc quay lại sau'
-        : 'All articles failed to generate';
+      let errorMsg = '';
+      
+      if (hasOverloadError) {
+        errorMsg = 'Không hoàn thành - AI đang quá tải, xin vui lòng chọn Model khác hoặc quay lại sau';
+      } else if (failedKeywords.length > 0) {
+        errorMsg = `Tất cả bài viết thất bại. Từ khóa bị lỗi: ${failedKeywords.join(', ')}`;
+        // Truncate if too long
+        if (errorMsg.length > 1000) {
+          errorMsg = errorMsg.substring(0, 997) + '...';
+        }
+      } else {
+        errorMsg = 'All articles failed to generate';
+      }
+      
+      console.log(`📝 [BatchWrite] Setting error_message for failed job: "${errorMsg}"`);
       
       await execute(
         `UPDATE batch_jobs SET status = 'failed', error_message = ?, completed_at = NOW(), last_activity_at = NOW() WHERE id = ?`,

@@ -248,14 +248,37 @@ export default function BatchJobProgress({ jobId, onClose, onJobDeleted }: Batch
             )}
           </div>
 
-          {/* Error Message */}
-          {job.error_message && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex gap-3">
-                <XCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-yellow-800">Thông báo</p>
-                  <p className="text-sm text-yellow-700 mt-1">{job.error_message}</p>
+          {/* Failed Keywords */}
+          {job.failed_items > 0 && job.error_message && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-red-900">
+                  Từ khoá bị thất bại ({job.failed_items})
+                </h3>
+                <Button
+                  onClick={() => {
+                    const text = job.error_message || "";
+                    const element = document.createElement("a");
+                    element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(text));
+                    element.setAttribute("download", `batch-job-${jobId}-errors.txt`);
+                    element.style.display = "none";
+                    document.body.appendChild(element);
+                    element.click();
+                    document.body.removeChild(element);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Export TXT
+                </Button>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700 whitespace-pre-wrap break-words">
+                    {job.error_message}
+                  </p>
                 </div>
               </div>
             </div>
@@ -294,22 +317,12 @@ export default function BatchJobProgress({ jobId, onClose, onJobDeleted }: Batch
                 {job.article_ids.map((articleId, index) => (
                   <div
                     key={articleId}
-                    className="flex items-center justify-between bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
+                    className="flex items-center gap-3 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span className="text-sm text-gray-700">
-                        {job.job_data.keywords[index] || `Bài viết #${articleId}`}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate(`/articles/${articleId}`)}
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      Xem
-                    </Button>
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-gray-700">
+                      {job.job_data.keywords[index] || `Bài viết #${articleId}`}
+                    </span>
                   </div>
                 ))}
               </div>
