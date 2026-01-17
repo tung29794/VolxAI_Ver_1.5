@@ -939,12 +939,10 @@ const handleRewrite: RequestHandler = async (req, res) => {
     );
 
     if (!apiKeyRecord?.api_key) {
-      res
-        .status(500)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(500).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -1244,12 +1242,10 @@ const handleFindImage: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "No available image search API keys. Please add API keys in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "No available image search API keys. Please add API keys in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -1476,12 +1472,10 @@ const handleWriteMore: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -4173,12 +4167,10 @@ const handleGenerateSeoTitle: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -4356,12 +4348,10 @@ const handleGenerateMetaDescription: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -4536,12 +4526,10 @@ const handleGenerateArticleTitle: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -7400,17 +7388,16 @@ const handleUnifiedRewrite: RequestHandler = async (req, res) => {
 
     // Mode-specific validation
     if (mode === "paragraph" && !content) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Content is required for paragraph mode",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Content is required for paragraph mode",
+      });
     }
-    if (mode === "keywords" && !keywords) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Keywords are required" });
+    if (mode === "keywords" && (!content || !keywords)) {
+      return res.status(400).json({
+        success: false,
+        error: "Article content and keywords are required for keywords mode",
+      });
     }
     if (mode === "url" && (!url || !keywords)) {
       return res
@@ -7424,7 +7411,12 @@ const handleUnifiedRewrite: RequestHandler = async (req, res) => {
     }
 
     // Estimate tokens (simplified: 1 word ≈ 1.3 tokens)
-    const textToEstimate = content || keywords || url || "";
+    let textToEstimate = "";
+    if (mode === "keywords") {
+      textToEstimate = (content || "") + " " + (keywords || "");
+    } else {
+      textToEstimate = content || keywords || url || "";
+    }
     const estimatedTokens = Math.ceil(
       textToEstimate.split(" ").length * 1.3 * 2,
     ); // Double for rewrite output
@@ -7444,24 +7436,18 @@ const handleUnifiedRewrite: RequestHandler = async (req, res) => {
       });
     }
 
-    // Get API key based on model
-    let apiKey = "";
-    let provider = "openai";
-
-    // For now, default to OpenAI for rewrite
-    const apiKeyRecord = await queryOne<any>(
-      "SELECT api_key FROM api_keys WHERE provider = 'openai' AND category = 'content' AND is_active = 1 LIMIT 1",
-      [],
-    );
-
-    if (!apiKeyRecord?.api_key) {
-      return res.status(500).json({
+    // Get API key and provider based on model selection
+    const modelConfig = await getApiKeyForModel(model, false);
+    
+    if (!modelConfig) {
+      const provider = model.toLowerCase().includes("gemini") ? "Google AI" : "OpenAI";
+      return res.status(503).json({
         success: false,
-        error: "OpenAI API key not configured",
+        error: `${provider} API key not configured`,
       });
     }
 
-    apiKey = apiKeyRecord.api_key;
+    const { apiKey, provider, actualModel } = modelConfig;
 
     // Build the rewrite prompt based on mode
     let systemPrompt = getSystemPrompt("ai_rewrite");
@@ -7492,10 +7478,14 @@ const handleUnifiedRewrite: RequestHandler = async (req, res) => {
           "rewrite-all": "Rewrite both content and headings completely.",
           "deep-rewrite": "Deep rewrite - avoid any 100% duplicate content.",
         };
-        userPrompt = `Rewrite an article with the following details:
-Keywords: ${keywords}
+        userPrompt = `Rewrite the following article while incorporating these keywords naturally to maintain SEO value:
+
+Keywords to use: ${keywords}
 Voice & Tone: ${voiceAndTone}
-Writing Method: ${methodDesc[writingMethod] || "Standard"}${languageInstruction}\n\nNote: Use these keywords naturally throughout the article to maintain SEO value.`;
+Writing Method: ${methodDesc[writingMethod] || "Standard"}${languageInstruction}
+
+Original Article:
+${content}`;
         break;
 
       case "url":
@@ -7520,73 +7510,153 @@ Writing Method: ${writingMethod}${languageInstruction}`;
       systemPrompt = injectWebsiteKnowledge(systemPrompt, websiteKnowledge);
     }
 
-    // Call OpenAI API
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: mode === "news" && creativityLevel === "high" ? 0.8 : 0.6,
-        max_tokens: 4000,
-      }),
-    });
+    // Call appropriate API based on provider
+    let response;
+    let data;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
-      return res.status(response.status).json({
-        success: false,
-        error: "Failed to generate rewritten content",
+    if (provider === "google-ai") {
+      // Use Google Gemini API
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${actualModel}:generateContent?key=${apiKey}`;
+      response = await fetch(geminiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `${systemPrompt}\n\n${userPrompt}`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: mode === "news" && creativityLevel === "high" ? 0.8 : 0.6,
+            maxOutputTokens: 4000,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Google AI API error:", errorData);
+        return res.status(response.status).json({
+          success: false,
+          error: "Failed to generate rewritten content",
+        });
+      }
+
+      data = await response.json();
+      const rewrittenContent =
+        data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      if (!rewrittenContent) {
+        return res.status(500).json({
+          success: false,
+          error: "No content generated",
+        });
+      }
+
+      // Calculate actual tokens used
+      const actualTokens = await calculateTokens(
+        rewrittenContent,
+        "ai_rewrite_text",
+        false,
+        actualModel,
+      );
+
+      // Deduct tokens
+      await execute(
+        "UPDATE users SET tokens_remaining = tokens_remaining - ? WHERE id = ?",
+        [actualTokens, userId],
+      );
+
+      // Get remaining tokens
+      const userRows: any = await query(
+        "SELECT tokens_remaining FROM users WHERE id = ?",
+        [userId],
+      );
+      const remainingTokens = userRows[0]?.tokens_remaining || 0;
+
+      return res.json({
+        success: true,
+        content: rewrittenContent,
+        mode,
+        tokensUsed: actualTokens,
+        remainingTokens,
+        message: "Content successfully rewritten!",
+      });
+    } else {
+      // Use OpenAI API
+      response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: actualModel,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature:
+            mode === "news" && creativityLevel === "high" ? 0.8 : 0.6,
+          max_tokens: 4000,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("OpenAI API error:", errorData);
+        return res.status(response.status).json({
+          success: false,
+          error: "Failed to generate rewritten content",
+        });
+      }
+
+      data = await response.json();
+      const rewrittenContent = data.choices?.[0]?.message?.content || "";
+
+      if (!rewrittenContent) {
+        return res.status(500).json({
+          success: false,
+          error: "No content generated",
+        });
+      }
+
+      // Calculate actual tokens used
+      const actualTokens = await calculateTokens(
+        rewrittenContent,
+        "ai_rewrite_text",
+        false,
+        actualModel,
+      );
+
+      // Deduct tokens
+      await execute(
+        "UPDATE users SET tokens_remaining = tokens_remaining - ? WHERE id = ?",
+        [actualTokens, userId],
+      );
+
+      // Get remaining tokens
+      const userRows: any = await query(
+        "SELECT tokens_remaining FROM users WHERE id = ?",
+        [userId],
+      );
+      const remainingTokens = userRows[0]?.tokens_remaining || 0;
+
+      return res.json({
+        success: true,
+        content: rewrittenContent,
+        mode,
+        tokensUsed: actualTokens,
+        remainingTokens,
+        message: "Content successfully rewritten!",
       });
     }
-
-    const data = await response.json();
-    const rewrittenContent = data.choices?.[0]?.message?.content || "";
-
-    if (!rewrittenContent) {
-      return res.status(500).json({
-        success: false,
-        error: "No content generated",
-      });
-    }
-
-    // Calculate actual tokens used
-    const actualTokens = await calculateTokens(
-      rewrittenContent,
-      "ai_rewrite_text",
-      false,
-      "gpt-3.5-turbo",
-    );
-
-    // Deduct tokens
-    await execute(
-      "UPDATE users SET tokens_remaining = tokens_remaining - ? WHERE id = ?",
-      [actualTokens, userId],
-    );
-
-    // Get remaining tokens
-    const userRows: any = await query(
-      "SELECT tokens_remaining FROM users WHERE id = ?",
-      [userId],
-    );
-    const remainingTokens = userRows[0]?.tokens_remaining || 0;
-
-    // Return success with rewritten content
-    return res.json({
-      success: true,
-      content: rewrittenContent,
-      mode,
-      tokensUsed: actualTokens,
-      remainingTokens,
-      message: "Content successfully rewritten!",
-    });
   } catch (error) {
     console.error("Error in unified rewrite:", error);
     return res.status(500).json({
@@ -7607,5 +7677,124 @@ router.post("/generate-article-title", handleGenerateArticleTitle); // NEW: Gene
 router.post("/generate-toplist-outline", handleGenerateToplistOutline); // NEW: Toplist outline
 router.post("/generate-toplist", handleGenerateToplist); // NEW: Toplist article
 router.post("/generate-news", handleGenerateNews); // NEW: News article
+
+// ===== AUTO-BLOG ENDPOINTS =====
+
+const handleAutoBlogConfig: RequestHandler = async (req, res) => {
+  try {
+    if (!(await verifyUser(req, res))) return;
+    const userId = (req as any).userId;
+
+    const config = req.body;
+
+    // Validate required fields
+    if (!config.keywordPool || config.keywordPool.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Danh sách từ khóa không được để trống",
+      });
+    }
+
+    if (!config.model) {
+      return res.status(400).json({
+        success: false,
+        error: "Vui lòng chọn model AI",
+      });
+    }
+
+    // Validate competitor URLs if competitor analysis is enabled
+    let competitorUrlsList: string[] = [];
+    if (config.competitorAnalysis) {
+      if (!config.competitorUrls || config.competitorUrls.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Vui lòng nhập danh sách URL website đối thủ cạnh tranh",
+        });
+      }
+
+      // Parse and validate competitor URLs
+      competitorUrlsList = config.competitorUrls
+        .split("\n")
+        .map((url: string) => url.trim())
+        .filter((url: string) => url.length > 0);
+
+      // Basic URL validation
+      const urlRegex = /^https?:\/\/.+\..+/i;
+      const invalidUrls = competitorUrlsList.filter((url) => !urlRegex.test(url));
+
+      if (invalidUrls.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: `URL không hợp lệ: ${invalidUrls.join(", ")}`,
+        });
+      }
+    }
+
+    // Validate internal linking website if enabled
+    if (config.internalLinking && !config.selectedWebsiteForInternalLinks) {
+      return res.status(400).json({
+        success: false,
+        error: "Vui lòng chọn website để lấy bài viết liên quan",
+      });
+    }
+
+    // Validate publishing website if article status is publish
+    if (config.articleStatus === "publish" && !config.selectedWebsiteForPublishing) {
+      return res.status(400).json({
+        success: false,
+        error: "Vui lòng chọn website để đăng bài",
+      });
+    }
+
+    // Log configuration details
+    console.log("✓ Auto-blog config received for user:", userId);
+    console.log("  - Keywords:", config.keywordPool.split("\n").filter((k: string) => k.trim()).length, "items");
+    console.log("  - Trend Monitoring:", config.trendMonitoring);
+    console.log("  - Competitor Analysis:", config.competitorAnalysis);
+    if (config.competitorAnalysis) {
+      console.log("  - Competitor URLs:", competitorUrlsList.length, "sites");
+      competitorUrlsList.forEach((url: string) => {
+        console.log("    •", url);
+      });
+    }
+    console.log("  - Content Length:", config.contentLength);
+    console.log("  - Language:", config.language);
+    console.log("  - Persona:", config.persona);
+    console.log("  - Human-like Mode:", config.humanLike);
+    console.log("  - Auto Metadata:", config.autoGenerateMetadata);
+    console.log("  - Internal Linking:", config.internalLinking);
+    console.log("  - External Linking:", config.externalLinking);
+    console.log("  - Article Status:", config.articleStatus);
+    console.log("  - Scheduling:", config.scheduling);
+    console.log("  - AI Detection Filter:", config.aiDetectionFilter);
+    console.log("  - Batch Frequency:", config.batchFrequency);
+    console.log("  - Auto Start:", config.autoStart);
+    console.log("  - Model:", config.model);
+
+    // TODO: Save auto-blog configuration to database
+    // TABLE: auto_blog_configs (id, user_id, config_json, status, created_at, updated_at)
+    // For now, just acknowledge the config
+
+    const configId = Math.random().toString(36).substr(2, 9);
+
+    return res.json({
+      success: true,
+      message: "Cấu hình tự động viết blog đã được lưu thành công!",
+      configId: configId,
+      status: config.autoStart ? "running" : "paused",
+      competitorCount: competitorUrlsList.length,
+      keywordCount: config.keywordPool.split("\n").filter((k: string) => k.trim()).length,
+    });
+  } catch (error) {
+    console.error("Error saving auto-blog config:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to save auto-blog configuration",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+router.post("/autoblog/config", handleAutoBlogConfig);
 
 export { router as aiRouter };

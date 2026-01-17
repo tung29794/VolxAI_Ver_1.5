@@ -23,6 +23,14 @@ interface User {
   expires_at: string | null;
 }
 
+interface Plan {
+  id: number;
+  plan_key: string;
+  plan_name: string;
+  monthly_price: number;
+  description: string;
+}
+
 interface EditUserModalProps {
   user: User;
   isOpen: boolean;
@@ -50,6 +58,51 @@ export default function EditUserModal({ user, isOpen, onClose, onSuccess }: Edit
     expires_at: "",
   });
   const [saving, setSaving] = useState(false);
+  
+  // Default plans as fallback
+  const defaultPlans: Plan[] = [
+    { id: 7, plan_key: "free", plan_name: "Free", monthly_price: 0, description: "Thử nghiệm VolxAI" },
+    { id: 8, plan_key: "starter", plan_name: "Starter", monthly_price: 150000, description: "Bắt đầu với VolxAI" },
+    { id: 9, plan_key: "grow", plan_name: "Grow", monthly_price: 300000, description: "Cho những người viết nhiều" },
+    { id: 10, plan_key: "pro", plan_name: "Pro", monthly_price: 475000, description: "Cho nhà viết chuyên nghiệp" },
+    { id: 11, plan_key: "corp", plan_name: "Corp", monthly_price: 760000, description: "Giải pháp hoàn chỉnh cho doanh nghiệp" },
+    { id: 12, plan_key: "premium", plan_name: "Premium", monthly_price: 1200000, description: "Giải pháp hoàn chỉnh cho doanh nghiệp" },
+  ];
+  
+  const [plans, setPlans] = useState<Plan[]>(defaultPlans);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+
+  // Fetch plans from database
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        setLoadingPlans(true);
+        const token = localStorage.getItem("authToken");
+        const response = await fetch(buildApiUrl("/api/admin/plans"), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        if (data.success && Array.isArray(data.plans) && data.plans.length > 0) {
+          setPlans(data.plans);
+        } else {
+          // Use default plans if fetch fails or returns empty
+          setPlans(defaultPlans);
+        }
+      } catch (error) {
+        console.error("Error fetching plans:", error);
+        // Use default plans as fallback
+        setPlans(defaultPlans);
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchPlans();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (user && isOpen) {
@@ -302,43 +355,26 @@ export default function EditUserModal({ user, isOpen, onClose, onSuccess }: Edit
                 <select
                   value={formData.plan_type}
                   onChange={(e) => {
-                    const type = e.target.value;
-                    let name = "Free";
-                    let tokensLimit = 10000;
-                    let articlesLimit = 5;
-                    
-                    switch(type) {
-                      case "starter":
-                        name = "Starter";
-                        tokensLimit = 100000;
-                        articlesLimit = 50;
-                        break;
-                      case "grow":
-                        name = "Grow";
-                        tokensLimit = 500000;
-                        articlesLimit = 200;
-                        break;
-                      case "professional":
-                        name = "Professional";
-                        tokensLimit = 1000000;
-                        articlesLimit = 500;
-                        break;
+                    const selectedPlan = plans.find(p => p.plan_key === e.target.value);
+                    if (selectedPlan) {
+                      setFormData({ 
+                        ...formData, 
+                        plan_type: selectedPlan.plan_key,
+                        plan_name: selectedPlan.plan_name,
+                      });
                     }
-                    
-                    setFormData({ 
-                      ...formData, 
-                      plan_type: type,
-                      plan_name: name,
-                      tokens_limit: tokensLimit,
-                      articles_limit: articlesLimit
-                    });
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="free">Free</option>
-                  <option value="starter">Starter</option>
-                  <option value="grow">Grow</option>
-                  <option value="professional">Professional</option>
+                  {plans && plans.length > 0 ? (
+                    plans.map((plan) => (
+                      <option key={plan.id} value={plan.plan_key}>
+                        {plan.plan_name} - {plan.description}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>Không có gói dịch vụ</option>
+                  )}
                 </select>
               </div>
 

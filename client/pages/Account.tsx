@@ -35,6 +35,8 @@ import UserArticles from "@/components/UserArticles";
 import WebsiteManagement from "@/components/WebsiteManagement";
 import BatchJobsList from "@/components/BatchJobsList";
 import RewriteForm from "@/components/RewriteForm";
+import BatchWriteBySource from "@/components/BatchWriteBySource";
+import AutoBlogForm from "@/components/AutoBlogForm";
 
 type AccountTab =
   | "profile"
@@ -1436,6 +1438,10 @@ export default function Account() {
                   <BatchWriteByKeywords
                     onBack={() => setActiveWritingFeature(null)}
                   />
+                ) : activeWritingFeature === "batch-source" ? (
+                  <BatchWriteBySource
+                    onBack={() => setActiveWritingFeature(null)}
+                  />
                 ) : (
                   <>
                     <div className="space-y-2">
@@ -1470,7 +1476,12 @@ export default function Account() {
                       </div>
 
                       {/* Viết theo nguồn */}
-                      <div className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                      <div
+                        className="bg-white rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                        onClick={() =>
+                          setActiveWritingFeature("batch-source")
+                        }
+                      >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
                             <FileText className="w-6 h-6 text-green-600" />
@@ -1480,7 +1491,7 @@ export default function Account() {
                           Viết theo nguồn
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          Lấy nội dung từ nguồn và tạo bài viết mới từ đó
+                          Viết lại bài viết từ danh sách keyword|url
                         </p>
                       </div>
                     </div>
@@ -1493,29 +1504,7 @@ export default function Account() {
             {activeTab === "rewrite" && <RewriteForm />}
 
             {/* Auto-blogging Section */}
-            {activeTab === "auto-blog" && (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <h1 className="text-4xl font-bold text-foreground">
-                    Tự động viết blog
-                  </h1>
-                  <p className="text-lg text-muted-foreground">
-                    AI sẽ tự động tạo bài viết từ những chủ đề bạn chỉ định
-                  </p>
-                </div>
-                <div className="bg-white rounded-2xl border border-border p-8">
-                  <div className="text-center py-16">
-                    <ZapIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <h2 className="text-2xl font-bold text-foreground mb-2">
-                      Sắp có tính năng này
-                    </h2>
-                    <p className="text-muted-foreground">
-                      Tính năng tự động viết blog sẽ sớm được cải thiện
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+            {activeTab === "auto-blog" && <AutoBlogForm />}
 
             {/* Optimize Section */}
             {activeTab === "optimize" && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,8 @@ import {
 import { ChevronLeft, FileText, Sparkles, Zap, Loader2 } from "lucide-react";
 import { buildApiUrl } from "@/lib/api";
 import { toast } from "sonner";
+import MemoizedQuill from "@/components/MemoizedQuill";
+import ReactQuill from "react-quill";
 
 const languages = [
   { code: "vi", name: "Vietnamese" },
@@ -99,6 +101,17 @@ interface RewriteFormProps {
   onBack?: () => void;
 }
 
+const quillModules = {
+  toolbar: [
+    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+    ["bold", "italic", "underline", "strike"],
+    ["blockquote", "code-block"],
+    [{ list: "ordered" }, { list: "bullet" }],
+    ["link", "image"],
+    ["clean"],
+  ],
+};
+
 export default function RewriteForm({ onBack }: RewriteFormProps) {
   const [rewriteMode, setRewriteMode] = useState<RewriteMode>("paragraph");
   const [models, setModels] = useState<AIModel[]>([]);
@@ -106,6 +119,11 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loadingWebsites, setLoadingWebsites] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Quill refs
+  const paragraphQuillRef = useRef<ReactQuill>(null);
+  const keywordsQuillRef = useRef<ReactQuill>(null);
+  const newsQuillRef = useRef<ReactQuill>(null);
 
   // Common form data
   const [commonData, setCommonData] = useState({
@@ -123,6 +141,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
 
   // Mode 2: Keywords Rewrite
   const [keywordsData, setKeywordsData] = useState({
+    content: "", // Article content to rewrite
     keywords: "", // Format: main keyword, sub keyword, sub keyword
     voiceAndTone: "Trung lập",
     writingMethod: "keep-headings",
@@ -146,9 +165,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL || "https://api.volxai.com"}/api/models`,
-        );
+        const response = await fetch(buildApiUrl("/api/models"));
         const data = await response.json();
         if (data.success && data.models.length > 0) {
           setModels(data.models);
@@ -159,6 +176,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
         }
       } catch (error) {
         console.error("Error fetching models:", error);
+        toast.error("Lỗi khi tải danh sách model");
       } finally {
         setLoadingModels(false);
       }
@@ -245,12 +263,17 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
           break;
 
         case "keywords":
+          if (!keywordsData.content.trim()) {
+            toast.error("Vui lòng nhập hoặc dán nội dung bài viết");
+            return;
+          }
           if (!keywordsData.keywords.trim()) {
             toast.error("Vui lòng nhập từ khóa");
             return;
           }
           payload = {
             ...payload,
+            content: keywordsData.content,
             keywords: keywordsData.keywords,
             voiceAndTone: keywordsData.voiceAndTone,
             writingMethod: keywordsData.writingMethod,
@@ -288,7 +311,14 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
           break;
       }
 
-      const response = await fetch(buildApiUrl("/api/ai/rewrite"), {
+      const apiUrl = buildApiUrl("/api/ai/rewrite");
+      console.log("📤 Submitting rewrite request:", {
+        mode: rewriteMode,
+        apiUrl,
+        payloadKeys: Object.keys(payload),
+      });
+
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -296,6 +326,25 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
         },
         body: JSON.stringify(payload),
       });
+
+      console.log("📥 Rewrite response:", {
+        status: response.status,
+        ok: response.ok,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ Rewrite API error:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        });
+        throw new Error(
+          errorData.error ||
+            errorData.message ||
+            `HTTP ${response.status}: ${response.statusText}`,
+        );
+      }
 
       const data = await response.json();
 
@@ -310,7 +359,9 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
       }
     } catch (error) {
       console.error("Error submitting rewrite form:", error);
-      toast.error("Lỗi khi gửi yêu cầu");
+      const errorMessage =
+        error instanceof Error ? error.message : "Lỗi khi gửi yêu cầu";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -325,9 +376,9 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
     },
     {
       id: "keywords" as RewriteMode,
-      label: "Viết lại theo từ khoá",
+      label: "Viết lại bài viết theo từ khoá",
       icon: Sparkles,
-      description: "Viết lại dựa trên từ khoá được chỉ định",
+      description: "Viết lại bài viết dựa trên từ khoá được chỉ định",
     },
     {
       id: "url" as RewriteMode,
@@ -494,7 +545,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
         <div className="bg-white rounded-2xl border border-border p-6 space-y-4">
           <h2 className="text-lg font-semibold text-foreground">
             {rewriteMode === "paragraph" && "Nội dung đoạn văn"}
-            {rewriteMode === "keywords" && "Từ khóa và tùy chọn"}
+            {rewriteMode === "keywords" && "Bài viết, từ khóa và tùy chọn"}
             {rewriteMode === "url" && "URL và từ khóa"}
             {rewriteMode === "news" && "Nội dung tin tức"}
           </h2>
@@ -527,21 +578,25 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
                 </Select>
               </div>
 
-              {/* Content Textarea */}
+              {/* Content Editor */}
               <div className="space-y-2">
                 <Label htmlFor="content">Nội dung đoạn văn</Label>
-                <Textarea
-                  id="content"
-                  placeholder="Nhập hoặc dán nội dung đoạn văn tại đây..."
-                  value={paragraphData.content}
-                  onChange={(e) =>
-                    setParagraphData((prev) => ({
-                      ...prev,
-                      content: e.target.value,
-                    }))
-                  }
-                  className="min-h-[300px]"
-                />
+                <div className="border rounded-md overflow-hidden">
+                  <MemoizedQuill
+                    quillRef={paragraphQuillRef}
+                    content={paragraphData.content}
+                    setContent={(value) =>
+                      setParagraphData((prev) => ({
+                        ...prev,
+                        content: value,
+                      }))
+                    }
+                    modules={quillModules}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Nhập hoặc dán nội dung đoạn văn tại đây...
+                </p>
               </div>
             </div>
           )}
@@ -549,6 +604,27 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
           {/* Mode 2: Keywords Rewrite */}
           {rewriteMode === "keywords" && (
             <div className="space-y-4">
+              {/* Article Content Editor */}
+              <div className="space-y-2">
+                <Label htmlFor="keywordsContent">Nội dung bài viết</Label>
+                <div className="border rounded-md overflow-hidden">
+                  <MemoizedQuill
+                    quillRef={keywordsQuillRef}
+                    content={keywordsData.content}
+                    setContent={(value) =>
+                      setKeywordsData((prev) => ({
+                        ...prev,
+                        content: value,
+                      }))
+                    }
+                    modules={quillModules}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Nhập hoặc dán nội dung bài viết cần viết lại...
+                </p>
+              </div>
+
               {/* Keywords Input */}
               <div className="space-y-2">
                 <Label htmlFor="keywords">Từ khóa</Label>
@@ -738,21 +814,25 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
                 </Select>
               </div>
 
-              {/* Content Textarea */}
+              {/* Content Editor */}
               <div className="space-y-2">
                 <Label htmlFor="newsContent">Nội dung tin tức</Label>
-                <Textarea
-                  id="newsContent"
-                  placeholder="Nhập hoặc dán nội dung tin tức tại đây..."
-                  value={newsData.content}
-                  onChange={(e) =>
-                    setNewsData((prev) => ({
-                      ...prev,
-                      content: e.target.value,
-                    }))
-                  }
-                  className="min-h-[300px]"
-                />
+                <div className="border rounded-md overflow-hidden">
+                  <MemoizedQuill
+                    quillRef={newsQuillRef}
+                    content={newsData.content}
+                    setContent={(value) =>
+                      setNewsData((prev) => ({
+                        ...prev,
+                        content: value,
+                      }))
+                    }
+                    modules={quillModules}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Nhập hoặc dán nội dung tin tức tại đây...
+                </p>
               </div>
             </div>
           )}
