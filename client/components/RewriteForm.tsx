@@ -787,21 +787,25 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
                 </Select>
               </div>
 
-              {/* Content Textarea */}
+              {/* Content Editor */}
               <div className="space-y-2">
                 <Label htmlFor="newsContent">Nội dung tin tức</Label>
-                <Textarea
-                  id="newsContent"
-                  placeholder="Nhập hoặc dán nội dung tin tức tại đây..."
-                  value={newsData.content}
-                  onChange={(e) =>
-                    setNewsData((prev) => ({
-                      ...prev,
-                      content: e.target.value,
-                    }))
-                  }
-                  className="min-h-[300px]"
-                />
+                <div className="border rounded-md overflow-hidden">
+                  <MemoizedQuill
+                    quillRef={newsQuillRef}
+                    content={newsData.content}
+                    setContent={(value) =>
+                      setNewsData((prev) => ({
+                        ...prev,
+                        content: value,
+                      }))
+                    }
+                    modules={quillModules}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Nhập hoặc dán nội dung tin tức tại đây...
+                </p>
               </div>
             </div>
           )}
