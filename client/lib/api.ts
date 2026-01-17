@@ -4,8 +4,13 @@
  */
 
 // Get API URL from environment or use default
-// Default to HTTPS domain-based URL to prevent mixed content errors
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://api.volxai.com";
+// In development: use current host (empty string = relative path)
+// In production: use VITE_API_URL from env or https://api.volxai.com
+export const API_BASE_URL = import.meta.env.VITE_API_URL !== undefined
+  ? import.meta.env.VITE_API_URL
+  : (typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? ''
+      : 'https://api.volxai.com');
 
 export const API_ENDPOINTS = {
   // Auth endpoints
