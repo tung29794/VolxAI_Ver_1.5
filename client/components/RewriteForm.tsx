@@ -111,7 +111,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
   const [commonData, setCommonData] = useState({
     language: "vi",
     model: "",
-    websiteId: "",
+    websiteId: "none",
     autoInsertImages: false,
   });
 
