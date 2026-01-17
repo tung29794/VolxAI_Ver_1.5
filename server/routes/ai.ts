@@ -7493,10 +7493,14 @@ const handleUnifiedRewrite: RequestHandler = async (req, res) => {
           "rewrite-all": "Rewrite both content and headings completely.",
           "deep-rewrite": "Deep rewrite - avoid any 100% duplicate content.",
         };
-        userPrompt = `Rewrite an article with the following details:
-Keywords: ${keywords}
+        userPrompt = `Rewrite the following article while incorporating these keywords naturally to maintain SEO value:
+
+Keywords to use: ${keywords}
 Voice & Tone: ${voiceAndTone}
-Writing Method: ${methodDesc[writingMethod] || "Standard"}${languageInstruction}\n\nNote: Use these keywords naturally throughout the article to maintain SEO value.`;
+Writing Method: ${methodDesc[writingMethod] || "Standard"}${languageInstruction}
+
+Original Article:
+${content}`;
         break;
 
       case "url":
