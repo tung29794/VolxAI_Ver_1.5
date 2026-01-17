@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,8 @@ import {
 import { ChevronLeft, FileText, Sparkles, Zap, Loader2 } from "lucide-react";
 import { buildApiUrl } from "@/lib/api";
 import { toast } from "sonner";
+import MemoizedQuill from "@/components/MemoizedQuill";
+import ReactQuill from "react-quill";
 
 const languages = [
   { code: "vi", name: "Vietnamese" },
