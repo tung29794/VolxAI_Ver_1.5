@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { X, CheckCircle, XCircle, Clock, Pause, Play, Trash2, FileText } from "lucide-react";
 import { Button } from "./ui/button";
 import { buildApiUrl } from "../lib/api";
-import { toast } from "./ui/use-toast";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 interface BatchJobProgressProps {
@@ -19,11 +19,8 @@ interface BatchJob {
   total_items: number;
   completed_items: number;
   failed_items: number;
-  job_data: {
-    keywords: string[];
-    settings: any;
-  };
-  article_ids: number[];
+  job_data: any;
+  article_ids: any;
   current_item_index: number;
   tokens_at_start: number;
   tokens_used: number;
@@ -64,11 +61,7 @@ export default function BatchJobProgress({ jobId, onClose, onJobDeleted }: Batch
       setJob(result.data);
     } catch (error: any) {
       console.error("Error fetching job:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải thông tin job",
-        variant: "destructive",
-      });
+      toast.error("Không thể tải thông tin job");
     } finally {
       setIsLoading(false);
     }
@@ -105,18 +98,11 @@ export default function BatchJobProgress({ jobId, onClose, onJobDeleted }: Batch
         throw new Error("Failed to cancel job");
       }
 
-      toast({
-        title: "Thành công",
-        description: "Đã hủy job",
-      });
+      toast.success("Đã hủy job");
 
       fetchJob();
     } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể hủy job",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Không thể hủy job");
     } finally {
       setIsActionLoading(false);
     }
@@ -139,19 +125,12 @@ export default function BatchJobProgress({ jobId, onClose, onJobDeleted }: Batch
         throw new Error("Failed to delete job");
       }
 
-      toast({
-        title: "Thành công",
-        description: "Đã xóa job",
-      });
+      toast.success("Đã xóa job");
 
       if (onJobDeleted) onJobDeleted();
       onClose();
     } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể xóa job",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Không thể xóa job");
     } finally {
       setIsActionLoading(false);
     }
@@ -277,7 +256,7 @@ export default function BatchJobProgress({ jobId, onClose, onJobDeleted }: Batch
                 <div className="flex gap-3">
                   <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-red-700 whitespace-pre-wrap break-words">
-                    {job.error_message}
+                    {typeof job.error_message === 'string' ? job.error_message : JSON.stringify(job.error_message)}
                   </p>
                 </div>
               </div>
@@ -289,7 +268,7 @@ export default function BatchJobProgress({ jobId, onClose, onJobDeleted }: Batch
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-600">Tokens sử dụng</p>
               <p className="text-2xl font-semibold text-gray-900 mt-1">
-                {job.tokens_used.toLocaleString()}
+                {(job.tokens_used || 0).toLocaleString()}
               </p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
@@ -308,26 +287,54 @@ export default function BatchJobProgress({ jobId, onClose, onJobDeleted }: Batch
           </div>
 
           {/* Articles Created */}
-          {job.article_ids && job.article_ids.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="font-medium text-gray-900">
-                Bài viết đã tạo ({job.article_ids.length})
-              </h3>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {job.article_ids.map((articleId, index) => (
-                  <div
-                    key={articleId}
-                    className="flex items-center gap-3 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
-                  >
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-gray-700">
-                      {job.job_data.keywords[index] || `Bài viết #${articleId}`}
-                    </span>
+          {(() => {
+            try {
+              const articleIds = Array.isArray(job.article_ids) ? job.article_ids : 
+                                (typeof job.article_ids === 'string' && job.article_ids ? JSON.parse(job.article_ids) : []);
+              const keywords = job.job_data?.keywords || job.job_data?.sources || [];
+              const keywordArray = Array.isArray(keywords) ? keywords : 
+                                  (typeof keywords === 'string' && keywords ? JSON.parse(keywords) : []);
+              
+              if (!articleIds || articleIds.length === 0) return null;
+              
+              return (
+                <div className="space-y-3">
+                  <h3 className="font-medium text-gray-900">
+                    Bài viết đã tạo ({articleIds.length})
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {articleIds.map((articleId: any, index: number) => {
+                      const keyword = keywordArray[index];
+                      let displayText = `Bài viết #${articleId}`;
+                      
+                      try {
+                        if (keyword && typeof keyword === 'string') {
+                          displayText = keyword.split('|')[0].trim() || displayText;
+                        }
+                      } catch (e) {
+                        // Keep default display text
+                      }
+                      
+                      return (
+                        <div
+                          key={`article-${articleId}-${index}`}
+                          className="flex items-center gap-3 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
+                        >
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          <span className="text-sm text-gray-700">
+                            {displayText}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              );
+            } catch (error) {
+              console.error('Error rendering articles:', error);
+              return null;
+            }
+          })()}
 
           {/* Actions */}
           <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
@@ -357,19 +364,23 @@ export default function BatchJobProgress({ jobId, onClose, onJobDeleted }: Batch
               </Button>
             )}
 
-            {job.article_ids && job.article_ids.length > 0 && (
-              <Button
-                onClick={() => {
-                  navigate("/account?tab=articles");
-                  onClose();
-                }}
-                variant="outline"
-                className="flex-1"
+            {(() => {
+              const articleIds = Array.isArray(job.article_ids) ? job.article_ids : 
+                                (typeof job.article_ids === 'string' ? JSON.parse(job.article_ids || '[]') : []);
+              return articleIds && articleIds.length > 0 && (
+                <Button
+                  onClick={() => {
+                    navigate("/account?tab=articles");
+                    onClose();
+                  }}
+                  variant="outline"
+                  className="flex-1"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Xem tất cả bài viết
               </Button>
-            )}
+              );
+            })()}
           </div>
         </div>
       </div>

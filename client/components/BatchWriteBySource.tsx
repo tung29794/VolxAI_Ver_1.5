@@ -105,14 +105,14 @@ export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) 
       try {
         const response = await fetch(buildApiUrl("/api/models"));
         const data = await response.json();
-        console.log("📊 Models API Response:", data);
+        console.log("📊 Models API Response:", JSON.stringify(data));
         
         if (data.success && Array.isArray(data.models) && data.models.length > 0) {
           setModels(data.models);
-          console.log("🎯 Available models:", data.models.map((m: AIModel) => ({
+          console.log("🎯 Available models:", JSON.stringify(data.models.map((m: AIModel) => ({
             id: m.model_id,
             display: m.display_name
-          })));
+          }))));
           
           // Try to find Gemini 2.5 Flash model, otherwise use first model
           let geminiModel: AIModel | undefined;
@@ -138,11 +138,11 @@ export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) 
           const selectedModel = geminiModel || data.models[0];
           const defaultModelId = selectedModel?.model_id || "";
           
-          console.log("✅ Default model set to:", {
+          console.log("✅ Default model set to:", JSON.stringify({
             id: defaultModelId,
             name: selectedModel?.display_name,
             source: geminiModel ? "Gemini 2.5 Flash found" : "First model"
-          });
+          }));
           
           if (defaultModelId) {
             setCommonData((prev) => ({
@@ -231,9 +231,13 @@ export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) 
     }
 
     const entries = parseSourceList(sourceList);
+    console.log("📝 Parsed entries:", JSON.stringify(entries));
+    
     const validEntries = entries.filter(
       (e) => e.keyword && e.url && !e.error && e.status !== "failed",
     );
+    
+    console.log("✅ Valid entries:", JSON.stringify(validEntries));
 
     if (validEntries.length === 0) {
       toast.error("Không có entries hợp lệ. Format: keyword|url");
@@ -262,6 +266,12 @@ export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) 
 
       // Create batch job via API - similar to BatchWriteByKeywords
       const sourceLines = validEntries.map((e) => `${e.keyword}|${e.url}`);
+      
+      console.log("📤 Sending sourceLines:", JSON.stringify(sourceLines));
+      console.log("📤 Payload:", JSON.stringify({
+        job_type: "batch_source",
+        sources: sourceLines,
+      }));
 
       const response = await fetch(buildApiUrl("/api/batch-jobs"), {
         method: "POST",
@@ -291,10 +301,10 @@ export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) 
 
       const result = await response.json();
 
-      toast({
-        title: "Thành công",
-        description: `Đã tạo ${validEntries.length} bài viết. Hệ thống đang xử lý...`,
-      });
+      // Notify success using sonner API (string, not object)
+      toast.success(
+        `Đã tạo ${validEntries.length} bài viết. Hệ thống đang xử lý...`
+      );
 
       // Navigate to batch jobs tab
       navigate("/account?tab=batch-jobs");

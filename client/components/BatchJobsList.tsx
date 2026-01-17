@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Clock, CheckCircle, XCircle, Pause, Play, Eye, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import { buildApiUrl } from "../lib/api";
-import { toast } from "./ui/use-toast";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import BatchJobProgress from "./BatchJobProgress";
 
@@ -25,9 +25,11 @@ export default function BatchJobsList() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [error, setError] = useState<string | null>(null);
 
   const fetchJobs = async () => {
     try {
+      setError(null);
       const token = localStorage.getItem("authToken");
       if (!token) {
         navigate("/login");
@@ -48,14 +50,21 @@ export default function BatchJobsList() {
       }
 
       const result = await response.json();
-      setJobs(result.data.jobs || []);
+      const jobsData = result.data?.jobs || result.jobs || [];
+      
+      // Ensure jobs is always an array
+      if (!Array.isArray(jobsData)) {
+        console.error("Jobs data is not an array:", jobsData);
+        setJobs([]);
+        return;
+      }
+      
+      setJobs(jobsData);
     } catch (error: any) {
       console.error("Error fetching jobs:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải danh sách jobs",
-        variant: "destructive",
-      });
+      setError(error.message || "Không thể tải danh sách jobs");
+      toast.error("Không thể tải danh sách jobs");
+      setJobs([]);
     } finally {
       setIsLoading(false);
     }
@@ -68,6 +77,20 @@ export default function BatchJobsList() {
     const interval = setInterval(fetchJobs, 5000);
     return () => clearInterval(interval);
   }, [statusFilter]);
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <p className="text-red-700 font-medium mb-2">Lỗi tải dữ liệu</p>
+          <p className="text-sm text-red-600 mb-4">{error}</p>
+          <Button onClick={() => { setError(null); fetchJobs(); }}>
+            Thử lại
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { color: string; icon: any; label: string }> = {
@@ -90,9 +113,16 @@ export default function BatchJobsList() {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString("vi-VN");
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Invalid date";
+      return date.toLocaleString("vi-VN");
+    } catch (error) {
+      console.error("Date parsing error:", error);
+      return "Invalid date";
+    }
   };
 
   if (isLoading) {
@@ -175,62 +205,81 @@ export default function BatchJobsList() {
       ) : (
         <div className="space-y-4">
           {jobs.map((job) => {
-            const progressPercent = Math.round(
-              (job.completed_items / job.total_items) * 100
-            );
+            try {
+              // Safety checks
+              if (!job || !job.id) {
+                console.warn("Invalid job data:", job);
+                return null;
+              }
 
-            return (
-              <div
-                key={job.id}
-                className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Batch Job #{job.id}
-                      </h3>
-                      {getStatusBadge(job.status)}
+              const progressPercent = job.total_items > 0
+                ? Math.round((job.completed_items / job.total_items) * 100)
+                : 0;
+              
+              // Ensure all values are safe to render
+              const safeJobId = String(job.id || '');
+              const safeStatus = String(job.status || 'pending');
+              const safeCreatedAt = job.created_at ? String(job.created_at) : '';
+              const safeCompletedItems = Number(job.completed_items) || 0;
+              const safeTotalItems = Number(job.total_items) || 0;
+              const safeFailedItems = Number(job.failed_items) || 0;
+
+              return (
+                <div
+                  key={job.id}
+                  className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Batch Job #{safeJobId}
+                        </h3>
+                        {getStatusBadge(safeStatus)}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Tạo lúc: {formatDate(safeCreatedAt)}
+                      </p>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      Tạo lúc: {formatDate(job.created_at)}
-                    </p>
+                    <Button
+                      onClick={() => setSelectedJobId(job.id)}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Chi tiết
+                    </Button>
                   </div>
-                  <Button
-                    onClick={() => setSelectedJobId(job.id)}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Chi tiết
-                  </Button>
-                </div>
 
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">
-                      Tiến độ: {job.completed_items} / {job.total_items}
-                    </span>
-                    <span className="font-semibold text-blue-600">
-                      {progressPercent}%
-                    </span>
+                  {/* Progress Bar */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-700">
+                        Tiến độ: {safeCompletedItems} / {safeTotalItems}
+                      </span>
+                      <span className="font-semibold text-blue-600">
+                        {progressPercent}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-blue-600 h-full transition-all duration-300"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    {safeFailedItems > 0 && (
+                      <p className="text-xs text-red-600">
+                        {safeFailedItems} bài viết thất bại
+                      </p>
+                    )}
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-full transition-all duration-300"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                  {job.failed_items > 0 && (
-                    <p className="text-xs text-red-600">
-                      {job.failed_items} bài viết thất bại
-                    </p>
-                  )}
                 </div>
-              </div>
-            );
+              );
+            } catch (renderError) {
+              console.error("Error rendering job:", renderError, job);
+              return null;
+            }
           })}
         </div>
       )}

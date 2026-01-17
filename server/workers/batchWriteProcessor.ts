@@ -14,6 +14,109 @@
 import { query, execute } from "../db";
 import * as aiService from "../services/aiService";
 
+/**
+ * Simple AI caller for rewriting content
+ */
+async function callAI(
+  provider: string,
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number = 4000,
+  temperature: number = 0.7
+): Promise<{ success: boolean; content?: string; error?: string; tokensUsed?: number }> {
+  try {
+    if (provider === "google-ai" || provider === "gemini") {
+      // Call Google AI (Gemini)
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
+          generationConfig: {
+            temperature: temperature,
+            maxOutputTokens: maxTokens,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: `Google AI API error (${response.status}): ${errorData.error?.message || JSON.stringify(errorData)}`,
+        };
+      }
+
+      const data = await response.json();
+      let content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      if (!content && data.candidates?.[0]?.content?.parts?.length > 1) {
+        content = data.candidates[0].content.parts
+          .map((p: any) => p.text || "")
+          .filter((t: any) => t && t.trim())
+          .join(" ");
+      }
+
+      content = content.trim();
+      
+      if (!content) {
+        return { success: false, error: "No content generated from Google AI" };
+      }
+
+      const tokensUsed = Math.ceil(content.length / 4);
+      return { success: true, content, tokensUsed };
+    } else if (provider === "openai") {
+      // Call OpenAI
+      const url = "https://api.openai.com/v1/chat/completions";
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          max_tokens: maxTokens,
+          temperature: temperature,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: `OpenAI API error (${response.status}): ${errorData.error?.message || JSON.stringify(errorData)}`,
+        };
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "";
+
+      if (!content) {
+        return { success: false, error: "No content generated from OpenAI" };
+      }
+
+      const tokensUsed = data.usage?.total_tokens || Math.ceil(content.length / 4);
+      return { success: true, content, tokensUsed };
+    } else {
+      return { success: false, error: `Unsupported provider: ${provider}` };
+    }
+  } catch (error: any) {
+    console.error("callAI error:", error);
+    return { success: false, error: error.message || "Unknown error" };
+  }
+}
+
+
 interface BatchJob {
   id: number;
   user_id: number;
@@ -32,7 +135,8 @@ interface BatchJob {
 }
 
 interface JobData {
-  keywords: string[];
+  keywords?: string[];
+  sources?: string[]; // For batch_source: ["keyword|url", ...]
   settings: {
     model?: string;
     language?: string;
@@ -44,6 +148,9 @@ interface JobData {
     maxImages?: number;
     websiteId?: number | null;
     useGoogleSearch?: boolean;
+    voiceAndTone?: string; // For batch_source
+    writingMethod?: string; // For batch_source
+    websiteKnowledge?: string; // For batch_source
   };
 }
 
@@ -56,10 +163,10 @@ const MAX_CONCURRENT_JOBS = 5;
  */
 export async function processBatchWriteJobs() {
   try {
-    // Get pending batch_keywords jobs
+    // Get pending batch jobs (both keywords and source)
     const jobs = await query<BatchJob>(
       `SELECT * FROM batch_jobs 
-       WHERE status = 'pending' AND job_type = 'batch_keywords'
+       WHERE status = 'pending' AND job_type IN ('batch_keywords', 'batch_source')
        ORDER BY created_at ASC 
        LIMIT ?`,
       [MAX_CONCURRENT_JOBS],
@@ -122,9 +229,14 @@ async function processJob(job: BatchJob) {
       return;
     }
 
-    const { keywords, settings } = jobData;
-    if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
-      await markJobFailed(job.id, "No keywords provided");
+    const { keywords, sources, settings } = jobData;
+    
+    // Determine items based on job type
+    const items = job.job_type === 'batch_source' ? sources : keywords;
+    const itemType = job.job_type === 'batch_source' ? 'sources' : 'keywords';
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      await markJobFailed(job.id, `No ${itemType} provided`);
       return;
     }
 
@@ -134,9 +246,9 @@ async function processJob(job: BatchJob) {
     let failedKeywords: string[] = []; // Track failed keywords for error message
     const MAX_FAILURES = 5; // Stop batch job if 5+ articles fail
 
-    // Process each keyword line sequentially
-    for (let i = startIndex; i < keywords.length; i++) {
-      const keywordLine = keywords[i];
+    // Process each item sequentially
+    for (let i = startIndex; i < items.length; i++) {
+      const itemLine = items[i];
 
       // Check job status
       const currentJobs = await query<BatchJob>(
@@ -178,7 +290,7 @@ async function processJob(job: BatchJob) {
         await pauseJob(
           job.id,
           i,
-          `Insufficient tokens at article ${i + 1}/${keywords.length}. Please upgrade or wait for token reset.`,
+          `Insufficient tokens at article ${i + 1}/${items.length}. Please upgrade or wait for token reset.`,
         );
         return;
       }
@@ -187,21 +299,20 @@ async function processJob(job: BatchJob) {
         await pauseJob(
           job.id,
           i,
-          `Article limit reached at article ${i + 1}/${keywords.length}. Please upgrade your plan.`,
+          `Article limit reached at article ${i + 1}/${items.length}. Please upgrade your plan.`,
         );
         return;
       }
 
       try {
         console.log(
-          `\n📝 [BatchWrite] Article ${i + 1}/${keywords.length}: "${keywordLine}"`,
+          `\n📝 [BatchWrite] Article ${i + 1}/${items.length} [${job.job_type}]: "${itemLine}"`,
         );
 
-        const result = await processKeywordLine(
-          job.user_id,
-          keywordLine,
-          settings,
-        );
+        // Process based on job type
+        const result = job.job_type === 'batch_source'
+          ? await processSourceLine(job.user_id, itemLine, settings)
+          : await processKeywordLine(job.user_id, itemLine, settings);
 
         if (result.success && result.articleId) {
           articleIds.push(result.articleId);
@@ -233,10 +344,10 @@ async function processJob(job: BatchJob) {
             );
           }
 
-          // Track failed keyword
-          failedKeywords.push(keywordLine);
+          // Track failed item
+          failedKeywords.push(itemLine);
           console.log(
-            `❌ [BatchWrite] Failed keyword (#${failedKeywords.length}): "${keywordLine}"`,
+            `❌ [BatchWrite] Failed ${itemType} (#${failedKeywords.length}): "${itemLine}"`,
           );
 
           // Check if error is due to API overload
@@ -613,6 +724,328 @@ async function processKeywordLine(
     return {
       success: false,
       articleId, // Return articleId if it was created before error
+      tokensUsed: totalTokensUsed,
+      error: error.message || "Unknown error",
+    };
+  }
+}
+
+/**
+ * Process a single source line (batch_source)
+ * Format: "keyword|url"
+ * Fetches content from URL and rewrites it
+ */
+async function processSourceLine(
+  userId: number,
+  sourceLine: string,
+  settings: JobData["settings"],
+): Promise<{
+  success: boolean;
+  articleId?: number;
+  tokensUsed: number;
+  error?: string;
+}> {
+  let totalTokensUsed = 0;
+  let articleId: number | undefined = undefined;
+
+  try {
+    // Parse source line: "keyword|url"
+    const parts = sourceLine.split("|").map(p => p.trim());
+    if (parts.length !== 2) {
+      throw new Error(`Invalid source format. Expected "keyword|url", got: "${sourceLine}"`);
+    }
+
+    const [keyword, sourceUrl] = parts;
+    if (!keyword || !sourceUrl) {
+      throw new Error("Both keyword and URL are required");
+    }
+
+    const language = settings?.language || "vi";
+    const model = settings?.model || "gemini-2.5-flash";
+    const voiceAndTone = settings?.voiceAndTone || "Trung lập";
+    const writingMethod = settings?.writingMethod || "keep-headings";
+
+    console.log(`  🔗 Source URL: ${sourceUrl}`);
+    console.log(`  🎯 Keyword: ${keyword}`);
+    console.log(`  🤖 Model: ${model}`);
+    console.log(`  ✍️ Writing Method: ${writingMethod}`);
+
+    // STEP 1: Fetch content from URL
+    console.log(`  📝 Step 1: Fetching content from URL`);
+    let sourceContent = "";
+    try {
+      const response = await fetch(sourceUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch URL: ${response.status}`);
+      }
+
+      const html = await response.text();
+      
+      // Simple HTML to text extraction
+      const textContent = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (textContent.length < 100) {
+        throw new Error("Fetched content is too short (less than 100 characters)");
+      }
+
+      sourceContent = textContent.substring(0, 8000); // Limit to 8000 chars
+      console.log(`  ✅ Content fetched: ${sourceContent.length} chars`);
+    } catch (fetchError: any) {
+      console.error(`  ❌ Failed to fetch URL:`, fetchError?.message || fetchError);
+      console.log(
+        `  ⚠️ Falling back to keyword-based generation for "${keyword}" because source URL could not be fetched`,
+      );
+
+      // 🔁 Fallback: if we cannot fetch the source URL (e.g. 403/Cloudflare),
+      // reuse the existing keyword-based batch pipeline instead of failing
+      // the entire job. This will create a fresh article based only on the
+      // keyword, so jobs still complete even when some websites block bots.
+      return await processKeywordLine(
+        userId,
+        keyword,
+        {
+          ...settings,
+          // Map voice/tone to the tone field used by processKeywordLine
+          tone: settings?.voiceAndTone || (settings as any)?.tone || "professional",
+          // Ensure language/model are preserved
+          language,
+          model,
+        } as any,
+      );
+    }
+
+    // STEP 2: Create article record
+    console.log(`  📝 Step 2: Creating article record`);
+    const insertResult = await execute(
+      `INSERT INTO articles (user_id, title, content, status, keywords, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        userId,
+        keyword + " - Đang viết lại",
+        "",
+        "draft",
+        JSON.stringify([keyword]),
+      ],
+    );
+
+    articleId = (insertResult as any).insertId;
+    if (!articleId) throw new Error("Failed to create article record");
+    console.log(`  ✅ Article created: #${articleId}`);
+
+    // STEP 3: Rewrite content using AI
+    console.log(`  📝 Step 3: Rewriting content with AI`);
+    const languageName = language === "vi" ? "Vietnamese" : language === "en" ? "English" : language;
+    
+    // Get model configuration
+    const modelConfigResult = await execute(
+      `SELECT model_id, provider FROM ai_models 
+       WHERE (model_id = ? OR display_name = ?) AND is_active = TRUE 
+       LIMIT 1`,
+      [model, model]
+    );
+    
+    if (!modelConfigResult || (modelConfigResult as any[]).length === 0) {
+      throw new Error(`Model "${model}" not found or inactive`);
+    }
+
+    const modelInfo = (modelConfigResult as any[])[0];
+    const actualModel = modelInfo.model_id;
+    const provider = modelInfo.provider;
+
+    // Get API key
+    const apiKeyResult = await execute(
+      `SELECT api_key FROM api_keys
+       WHERE provider = ? AND category = 'content' AND is_active = TRUE
+       LIMIT 1`,
+      [provider]
+    );
+
+    if (!apiKeyResult || (apiKeyResult as any[]).length === 0) {
+      throw new Error(`No active API key found for provider: ${provider}`);
+    }
+
+    const apiKey = (apiKeyResult as any[])[0].api_key;
+
+    // Build rewrite prompt
+    let systemPrompt = `You are an expert content writer. Your task is to rewrite articles in a natural, engaging way.`;
+    
+    let userPrompt = `Rewrite the following source content about "${keyword}".\n\n`;
+    
+    if (writingMethod === "deep-rewrite") {
+      userPrompt += `IMPORTANT: This is a DEEP rewrite. Completely rewrite the content in your own words, using different sentence structures and expressions. The result should be unique and avoid any direct copying from the source.\n\n`;
+    } else if (writingMethod === "rewrite-all") {
+      userPrompt += `Rewrite all content including headings and body text. Make it more engaging and better structured.\n\n`;
+    } else {
+      userPrompt += `Rewrite the content while keeping similar heading structure. Improve clarity and readability.\n\n`;
+    }
+
+    userPrompt += `Content voice and tone: ${voiceAndTone}\n`;
+    userPrompt += `Language: ${languageName}\n`;
+    userPrompt += `Target keyword: ${keyword}\n\n`;
+    userPrompt += `Source Content:\n${sourceContent}\n\n`;
+    userPrompt += `Rewritten Content (${languageName}, in HTML format with proper headings):`;
+
+    const estimatedTokens = Math.ceil(sourceContent.length / 4) + 1000;
+    
+    const rewriteResult = await callAI(
+      provider,
+      apiKey,
+      actualModel,
+      systemPrompt,
+      userPrompt,
+      Math.min(estimatedTokens * 2, 4000),
+      0.7
+    );
+
+    if (!rewriteResult.success || !rewriteResult.content) {
+      throw new Error(`Failed to rewrite content: ${rewriteResult.error}`);
+    }
+
+    let rewrittenContent = rewriteResult.content.trim();
+    
+    // Clean up response
+    rewrittenContent = rewrittenContent
+      .replace(/^(here'?s?|here is|below is|following is|the rewritten content|rewritten content).*?:/gi, "")
+      .trim();
+
+    totalTokensUsed += rewriteResult.tokensUsed || estimatedTokens;
+    console.log(`  ✅ Content rewritten: ${rewrittenContent.length} chars (${rewriteResult.tokensUsed} tokens)`);
+
+    // STEP 4: Save rewritten content
+    console.log(`  📝 Step 4: Saving rewritten content`);
+    await execute(
+      `UPDATE articles SET content = ? WHERE id = ?`,
+      [rewrittenContent, articleId],
+    );
+    console.log(`  ✅ Content saved`);
+
+    // STEP 5: Generate SEO Title
+    console.log(`  📝 Step 5: Generating SEO Title`);
+    const titleModel = "gpt-3.5-turbo";
+    const seoTitleResult = await aiService.generateBatchWriteSeoTitle(
+      keyword,
+      keyword,
+      userId,
+      language,
+      titleModel,
+    );
+
+    if (!seoTitleResult.success || !seoTitleResult.seoTitle) {
+      throw new Error(`Failed to generate SEO Title: ${seoTitleResult.error}`);
+    }
+
+    const seoTitle = seoTitleResult.seoTitle.trim();
+    totalTokensUsed += seoTitleResult.tokensUsed || 0;
+    console.log(`  ✅ SEO Title: "${seoTitle}"`);
+
+    // STEP 6: Generate Meta Description
+    console.log(`  📝 Step 6: Generating Meta Description`);
+    const metaDescResult = await aiService.generateBatchWriteMetaDescription(
+      seoTitle,
+      keyword,
+      userId,
+      language,
+      titleModel,
+    );
+
+    if (!metaDescResult.success || !metaDescResult.metaDesc) {
+      throw new Error(`Failed to generate Meta Description: ${metaDescResult.error}`);
+    }
+
+    const metaDesc = metaDescResult.metaDesc.trim();
+    totalTokensUsed += metaDescResult.tokensUsed || 0;
+    console.log(`  ✅ Meta Description generated`);
+
+    // STEP 7: Generate final title
+    console.log(`  📝 Step 7: Generating final article title`);
+    const titleResult = await aiService.generateBatchWriteArticleTitle(
+      keyword,
+      userId,
+      language,
+      "professional",
+      titleModel,
+    );
+
+    if (!titleResult.success || !titleResult.title) {
+      throw new Error(`Failed to generate title: ${titleResult.error}`);
+    }
+
+    const finalTitle = titleResult.title.trim();
+    totalTokensUsed += titleResult.tokensUsed || 0;
+    console.log(`  ✅ Final title: "${finalTitle}"`);
+
+    // STEP 8: Update article with all metadata
+    console.log(`  📝 Step 8: Saving all metadata to article`);
+    await execute(
+      `UPDATE articles SET 
+        title = ?,
+        seo_title = ?,
+        meta_description = ?,
+        status = 'published'
+      WHERE id = ?`,
+      [finalTitle, seoTitle, metaDesc, articleId],
+    );
+    console.log(`  ✅ Article saved and published`);
+
+    // STEP 9: Validate
+    console.log(`  📝 Step 9: Validating article`);
+    const validationErrors: string[] = [];
+
+    if (!finalTitle || finalTitle.length < 40) {
+      validationErrors.push(`Title too short: ${finalTitle?.length || 0} chars`);
+    }
+
+    if (!seoTitle) {
+      validationErrors.push(`SEO Title missing`);
+    }
+
+    if (!metaDesc) {
+      validationErrors.push(`Meta Description missing`);
+    }
+
+    if (!rewrittenContent || rewrittenContent.length < 200) {
+      validationErrors.push(`Content too short: ${rewrittenContent?.length || 0} chars`);
+    }
+
+    if (validationErrors.length > 0) {
+      const errorMsg = validationErrors.join("; ");
+      console.log(`  ❌ Validation failed: ${errorMsg}`);
+      await execute(`UPDATE articles SET status = 'draft' WHERE id = ?`, [articleId]);
+      return {
+        success: false,
+        articleId,
+        tokensUsed: totalTokensUsed,
+        error: `Validation failed: ${errorMsg}`,
+      };
+    }
+
+    console.log(`  ✅ Validation passed - Article #${articleId} is published`);
+
+    return {
+      success: true,
+      articleId,
+      tokensUsed: totalTokensUsed,
+    };
+  } catch (error: any) {
+    console.error(`  ❌ Error in processSourceLine:`, error.message || error);
+
+    if (articleId) {
+      await execute(`UPDATE articles SET status = 'draft' WHERE id = ?`, [articleId]);
+    }
+
+    return {
+      success: false,
+      articleId,
       tokensUsed: totalTokensUsed,
       error: error.message || "Unknown error",
     };

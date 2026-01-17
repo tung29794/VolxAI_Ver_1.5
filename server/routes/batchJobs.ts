@@ -197,13 +197,30 @@ router.post(
       const user = req.user!;
       const { job_type, keywords, sources, settings } = req.body;
 
+      console.log("📥 Batch job request:", {
+        job_type,
+        has_keywords: !!keywords,
+        has_sources: !!sources,
+        keywords_length: keywords?.length,
+        sources_length: sources?.length,
+      });
+
+      // Validate job_type
+      if (!job_type) {
+        return res.status(400).json({
+          success: false,
+          error: "job_type is required",
+        });
+      }
+
       // Determine which items array to use based on job type
       const items = job_type === "batch_source" ? sources : keywords;
+      const expectedField = job_type === "batch_source" ? "sources" : "keywords";
 
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({
           success: false,
-          error: `${job_type === "batch_source" ? "Sources" : "Keywords"} array is required`,
+          error: `${expectedField} array is required (received job_type: ${job_type})`,
         });
       }
 
