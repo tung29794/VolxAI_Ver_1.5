@@ -188,8 +188,13 @@ router.post("/batch-jobs", authenticateToken, async (req: AuthRequest, res: Resp
     }
 
     // Get user's current tokens and article limit
+    // Get tokens from users table and articles_limit from user_subscriptions table
     const users = await query<any>(
-      "SELECT tokens_remaining, article_limit FROM users WHERE id = ?",
+      "SELECT tokens_remaining FROM users WHERE id = ?",
+      [user.id]
+    );
+    const subscriptions = await query<any>(
+      "SELECT articles_limit FROM user_subscriptions WHERE user_id = ? AND is_active = TRUE",
       [user.id]
     );
 
@@ -200,9 +205,17 @@ router.post("/batch-jobs", authenticateToken, async (req: AuthRequest, res: Resp
       });
     }
 
+    if (!subscriptions || subscriptions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "User subscription not found",
+      });
+    }
+
     const userData = users[0];
+    const subscriptionData = subscriptions[0];
     const tokensAtStart = userData.tokens_remaining || 0;
-    const articlesLimitAtStart = userData.article_limit || 0;
+    const articlesLimitAtStart = subscriptionData.articles_limit || 0;
 
     // Create batch job
     // Keywords format: ["từ1, từ2, từ3", "từ4, từ5"]
