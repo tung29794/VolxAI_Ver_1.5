@@ -518,7 +518,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
         <div className="bg-white rounded-2xl border border-border p-6 space-y-4">
           <h2 className="text-lg font-semibold text-foreground">
             {rewriteMode === "paragraph" && "Nội dung đoạn văn"}
-            {rewriteMode === "keywords" && "Từ khóa và tùy chọn"}
+            {rewriteMode === "keywords" && "Bài viết, từ khóa và tùy chọn"}
             {rewriteMode === "url" && "URL và từ khóa"}
             {rewriteMode === "news" && "Nội dung tin tức"}
           </h2>
