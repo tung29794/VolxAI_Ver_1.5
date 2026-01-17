@@ -195,12 +195,15 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const user = req.user!;
-      const { job_type, keywords, settings } = req.body;
+      const { job_type, keywords, sources, settings } = req.body;
 
-      if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+      // Determine which items array to use based on job type
+      const items = job_type === "batch_source" ? sources : keywords;
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({
           success: false,
-          error: "Keywords array is required",
+          error: `${job_type === "batch_source" ? "Sources" : "Keywords"} array is required`,
         });
       }
 
@@ -235,12 +238,11 @@ router.post(
       const articlesLimitAtStart = subscriptionData.articles_limit || 0;
 
       // Create batch job
-      // Keywords format: ["từ1, từ2, từ3", "từ4, từ5"]
-      // Each string will be split by commas in the worker
-      const jobData = {
-        keywords,
-        settings: settings || {},
-      };
+      // For batch_keywords: ["từ1, từ2, từ3", "từ4, từ5"]
+      // For batch_source: ["keyword|url", "keyword|url"]
+      const jobData = job_type === "batch_source"
+        ? { sources, settings: settings || {} }
+        : { keywords, settings: settings || {} };
 
       const result = await execute(
         `INSERT INTO batch_jobs (
@@ -252,7 +254,7 @@ router.post(
           user.id,
           job_type || "batch_keywords",
           "pending",
-          keywords.length,
+          items.length,
           JSON.stringify(jobData),
           tokensAtStart,
           articlesLimitAtStart,
@@ -265,7 +267,7 @@ router.post(
         success: true,
         data: {
           jobId,
-          total_items: keywords.length,
+          total_items: items.length,
           status: "pending",
         },
       });

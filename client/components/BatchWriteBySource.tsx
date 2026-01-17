@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,14 +82,13 @@ interface BatchWriteBySourceProps {
 }
 
 export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) {
+  const navigate = useNavigate();
   const [sourceList, setSourceList] = useState("");
   const [models, setModels] = useState<AIModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(true);
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loadingWebsites, setLoadingWebsites] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [batchProgress, setBatchProgress] = useState<BatchSourceEntry[]>([]);
-  const [showProgress, setShowProgress] = useState(false);
 
   const [commonData, setCommonData] = useState({
     language: "vi",
@@ -240,16 +240,13 @@ export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) 
       return;
     }
 
-    setIsLoading(true);
-    setShowProgress(true);
-    setBatchProgress(entries);
-
     const token = localStorage.getItem("authToken");
     if (!token) {
-      toast.error("Vui lòng đăng nhập");
-      setIsLoading(false);
+      navigate("/login");
       return;
     }
+
+    setIsLoading(true);
 
     try {
       // Get website knowledge if selected
@@ -263,80 +260,48 @@ export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) 
         }
       }
 
-      // Process each entry
-      for (let i = 0; i < validEntries.length; i++) {
-        const entry = validEntries[i];
+      // Create batch job via API - similar to BatchWriteByKeywords
+      const sourceLines = validEntries.map((e) => `${e.keyword}|${e.url}`);
 
-        // Update status to processing
-        setBatchProgress((prev) =>
-          prev.map((e, idx) =>
-            entries.indexOf(e) === entries.indexOf(entry)
-              ? { ...e, status: "processing" as const }
-              : e,
-          ),
-        );
-
-        try {
-          const payload = {
-            mode: "url",
-            url: entry.url,
-            keywords: entry.keyword,
+      const response = await fetch(buildApiUrl("/api/batch-jobs"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          job_type: "batch_source",
+          sources: sourceLines, // Array of "keyword|url" format
+          settings: {
+            model: commonData.model,
+            language: commonData.language,
             voiceAndTone: commonData.voiceAndTone,
             writingMethod: commonData.writingMethod,
-            language: commonData.language,
-            model: commonData.model,
             autoInsertImages: commonData.autoInsertImages,
-            ...(websiteKnowledge && { websiteKnowledge }),
-          };
+            websiteKnowledge: websiteKnowledge,
+            websiteId: commonData.websiteId !== "none" ? parseInt(commonData.websiteId) : null,
+          },
+        }),
+      });
 
-          const response = await fetch(buildApiUrl("/api/ai/rewrite"), {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(
-              errorData.error || errorData.message || "Rewrite failed",
-            );
-          }
-
-          const data = await response.json();
-
-          // Update status to completed
-          setBatchProgress((prev) =>
-            prev.map((e) =>
-              e.keyword === entry.keyword && e.url === entry.url
-                ? { ...e, status: "completed" as const }
-                : e,
-            ),
-          );
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          setBatchProgress((prev) =>
-            prev.map((e) =>
-              e.keyword === entry.keyword && e.url === entry.url
-                ? {
-                    ...e,
-                    status: "failed" as const,
-                    error: errorMessage,
-                  }
-                : e,
-            ),
-          );
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create batch job");
       }
 
-      const completedCount = validEntries.length;
-      toast.success(`Hoàn thành xử lý ${completedCount} bài viết!`);
+      const result = await response.json();
+
+      toast({
+        title: "Thành công",
+        description: `Đã tạo ${validEntries.length} bài viết. Hệ thống đang xử lý...`,
+      });
+
+      // Navigate to batch jobs tab
+      navigate("/account?tab=batch-jobs");
     } catch (error) {
-      console.error("Error processing batch:", error);
-      toast.error("Lỗi khi xử lý batch");
+      console.error("Error creating batch job:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      toast.error(errorMessage || "Lỗi khi tạo batch job");
     } finally {
       setIsLoading(false);
     }
@@ -371,58 +336,8 @@ export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) 
         </p>
       </div>
 
-      {/* Progress View */}
-      {showProgress && (
-        <div className="bg-white rounded-2xl border border-border p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Tiến độ xử lý
-          </h2>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {batchProgress.map((entry, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between p-3 rounded-lg border border-border bg-gray-50"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-sm">
-                    {entry.keyword} → {entry.url}
-                  </p>
-                  {entry.error && (
-                    <p className="text-xs text-red-600 mt-1">{entry.error}</p>
-                  )}
-                </div>
-                <div className="ml-4">
-                  {entry.status === "pending" && (
-                    <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full">
-                      Chờ
-                    </span>
-                  )}
-                  {entry.status === "processing" && (
-                    <span className="text-xs px-2 py-1 bg-blue-200 text-blue-700 rounded-full flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Đang xử lý
-                    </span>
-                  )}
-                  {entry.status === "completed" && (
-                    <span className="text-xs px-2 py-1 bg-green-200 text-green-700 rounded-full">
-                      ✓ Hoàn thành
-                    </span>
-                  )}
-                  {entry.status === "failed" && (
-                    <span className="text-xs px-2 py-1 bg-red-200 text-red-700 rounded-full">
-                      ✗ Lỗi
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Form Container */}
-      {!showProgress && (
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
           {/* Input Format Guide */}
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
             <div className="flex gap-4">
@@ -657,7 +572,6 @@ export default function BatchWriteBySource({ onBack }: BatchWriteBySourceProps) 
             </Button>
           </div>
         </form>
-      )}
     </div>
   );
 }

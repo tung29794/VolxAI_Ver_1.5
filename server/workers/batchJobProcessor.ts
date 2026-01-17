@@ -29,6 +29,25 @@ interface JobData {
   };
 }
 
+// Language name mapping
+const LANGUAGE_NAMES: Record<string, string> = {
+  vi: "Vietnamese",
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  ru: "Russian",
+  ja: "Japanese",
+  zh: "Chinese",
+};
+
+// Helper function to get language name
+function getLanguageName(languageCode: string): string {
+  return LANGUAGE_NAMES[languageCode] || "English";
+}
+
 // Track processing jobs by user_id to avoid processing same user's jobs concurrently
 const processingJobs = new Set<number>();
 const MAX_CONCURRENT_JOBS = 5; // Process up to 5 jobs simultaneously
@@ -98,6 +117,250 @@ async function processJob(job: BatchJob) {
       [job.id],
     );
 
+    // Route to appropriate handler based on job_type
+    if (job.job_type === "batch_source") {
+      await processSourceBatchJob(job);
+    } else if (job.job_type === "batch_keywords") {
+      await processBatchKeywordsJob(job);
+    } else {
+      await markJobAsFailed(job.id, `Unknown job type: ${job.job_type}`);
+    }
+  } catch (error: any) {
+    console.error(`[BatchWorker] Error processing job #${job.id}:`, error);
+  } finally {
+    // Remove from processing set
+    processingJobs.delete(job.user_id);
+  }
+}
+
+/**
+ * Process batch_source job - creates articles from URL sources
+ * Sources format: ["keyword|url", "keyword|url", ...]
+ */
+async function processSourceBatchJob(job: BatchJob) {
+  try {
+    console.log(
+      `[BatchWorker] Processing source batch job #${job.id}`,
+    );
+
+    // Parse job data
+    let jobData: any;
+    try {
+      jobData =
+        typeof job.job_data === "string"
+          ? JSON.parse(job.job_data)
+          : job.job_data;
+    } catch (error) {
+      await markJobAsFailed(job.id, "Invalid job data format");
+      return;
+    }
+
+    // Parse existing article IDs
+    let articleIds: number[] = [];
+    try {
+      articleIds = job.article_ids
+        ? typeof job.article_ids === "string"
+          ? JSON.parse(job.article_ids)
+          : job.article_ids
+        : [];
+    } catch (error) {
+      articleIds = [];
+    }
+
+    // Get sources from job data
+    let sourceLines: string[] = [];
+
+    if ((jobData as any).sources && Array.isArray((jobData as any).sources)) {
+      // Sources format: ["keyword|url", "keyword|url"]
+      sourceLines = (jobData as any).sources;
+    } else {
+      await markJobAsFailed(job.id, "Invalid job data: no sources");
+      return;
+    }
+
+    const { settings } = jobData;
+    const startIndex = job.current_item_index || 0;
+
+    // Process each source line sequentially
+    for (let i = startIndex; i < sourceLines.length; i++) {
+      const sourceLine = sourceLines[i];
+
+      // Parse source line: "keyword|url" -> { keyword, url }
+      const parts = sourceLine.split("|").map((p) => p.trim());
+      const keyword = parts[0];
+      const url = parts[1];
+
+      if (!keyword || !url) {
+        console.warn(`[BatchWorker] Invalid source format at index ${i}: "${sourceLine}"`);
+        await execute(
+          `UPDATE batch_jobs 
+           SET failed_items = failed_items + 1,
+               current_item_index = ?,
+               last_activity_at = NOW()
+           WHERE id = ?`,
+          [i + 1, job.id],
+        );
+        continue;
+      }
+
+      // Check if job was paused or cancelled
+      const currentJob = await query<BatchJob>(
+        "SELECT status FROM batch_jobs WHERE id = ?",
+        [job.id],
+      );
+
+      if (!currentJob || currentJob.length === 0) {
+        console.log(`[BatchWorker] Job #${job.id} not found, stopping`);
+        return;
+      }
+
+      if (currentJob[0].status === "cancelled") {
+        console.log(`[BatchWorker] Job #${job.id} cancelled, stopping`);
+        return;
+      }
+
+      if (currentJob[0].status === "paused") {
+        console.log(`[BatchWorker] Job #${job.id} paused, stopping`);
+        return;
+      }
+
+      // Check user's current limits
+      const users = await query<any>(
+        "SELECT tokens_remaining FROM users WHERE id = ?",
+        [job.user_id],
+      );
+      const subscriptions = await query<any>(
+        "SELECT articles_limit FROM user_subscriptions WHERE user_id = ? AND is_active = TRUE",
+        [job.user_id],
+      );
+
+      if (!users || users.length === 0) {
+        await markJobAsFailed(job.id, "User not found");
+        return;
+      }
+
+      if (!subscriptions || subscriptions.length === 0) {
+        await markJobAsFailed(job.id, "User subscription not found");
+        return;
+      }
+
+      const user = users[0];
+      const subscription = subscriptions[0];
+      const tokensRemaining = user.tokens_remaining || 0;
+      const articleLimit = subscription.articles_limit || 0;
+
+      // Check if user has reached limits
+      if (tokensRemaining <= 0) {
+        await pauseJobWithError(
+          job.id,
+          i,
+          `Insufficient tokens. Job paused at article ${i + 1}/${sourceLines.length}.`,
+        );
+        console.log(`[BatchWorker] Job #${job.id} paused - out of tokens`);
+        return;
+      }
+
+      if (articleLimit <= 0) {
+        await pauseJobWithError(
+          job.id,
+          i,
+          `Article limit reached. Job paused at article ${i + 1}/${sourceLines.length}.`,
+        );
+        console.log(
+          `[BatchWorker] Job #${job.id} paused - article limit reached`,
+        );
+        return;
+      }
+
+      // Process this source
+      try {
+        console.log(
+          `\n📝 [BatchWorker] Processing source ${i + 1}/${sourceLines.length}`,
+        );
+        console.log(`   Source: "${sourceLine}"`);
+        console.log(`   Keyword: "${keyword}", URL: "${url}"`);
+
+        const result = await createArticleFromSource(
+          job.user_id,
+          {
+            keyword: keyword,
+            url: url,
+          },
+          i,
+          settings,
+        );
+
+        if (result && result.articleId) {
+          const { articleId, tokensUsed } = result;
+          articleIds.push(articleId);
+
+          // Update progress and tokens used
+          await execute(
+            `UPDATE batch_jobs 
+             SET completed_items = ?, 
+                 current_item_index = ?,
+                 article_ids = ?,
+                 tokens_used = tokens_used + ?,
+                 last_activity_at = NOW()
+             WHERE id = ?`,
+            [i + 1, i + 1, JSON.stringify(articleIds), tokensUsed, job.id],
+          );
+
+          console.log(
+            `✅ [BatchWorker] Successfully created article #${articleId} (${tokensUsed} tokens)`,
+          );
+        } else {
+          // Article creation failed, increment failed count
+          await execute(
+            `UPDATE batch_jobs 
+             SET failed_items = failed_items + 1,
+                 current_item_index = ?,
+                 last_activity_at = NOW()
+             WHERE id = ?`,
+            [i + 1, job.id],
+          );
+
+          console.log(`❌ [BatchWorker] Failed to create article from source`);
+        }
+      } catch (error: any) {
+        console.error(`[BatchWorker] Error processing source:`, error);
+
+        // Increment failed count
+        await execute(
+          `UPDATE batch_jobs 
+           SET failed_items = failed_items + 1,
+               current_item_index = ?,
+               last_activity_at = NOW()
+           WHERE id = ?`,
+          [i + 1, job.id],
+        );
+      }
+
+      // Small delay between articles
+      await sleep(1000);
+    }
+
+    // Job completed
+    await execute(
+      `UPDATE batch_jobs 
+       SET status = 'completed',
+           completed_at = NOW(),
+           last_activity_at = NOW()
+       WHERE id = ?`,
+      [job.id],
+    );
+
+    console.log(`[BatchWorker] Job #${job.id} completed successfully`);
+  } catch (error: any) {
+    console.error(`[BatchWorker] Error in processSourceBatchJob:`, error);
+  }
+}
+
+/**
+ * Process batch_keywords job - original implementation
+ */
+async function processBatchKeywordsJob(job: BatchJob) {
+  try {
     // Parse job data
     let jobData: JobData;
     try {
@@ -299,10 +562,236 @@ async function processJob(job: BatchJob) {
 
     console.log(`[BatchWorker] Job #${job.id} completed successfully`);
   } catch (error: any) {
-    console.error(`[BatchWorker] Error processing job #${job.id}:`, error);
-  } finally {
-    // Remove from processing set
-    processingJobs.delete(job.user_id);
+    console.error(`[BatchWorker] Error in processBatchKeywordsJob:`, error);
+  }
+}
+
+/**
+ * Create article from URL source
+ * 
+ * STEPS:
+ * 1. Fetch content from URL
+ * 2. Create article record
+ * 3. Rewrite the content using AI
+ * 4. Save content to DB
+ * 5. Generate SEO title
+ * 6. Save SEO metadata
+ */
+async function createArticleFromSource(
+  userId: number,
+  sourceData: { keyword: string; url: string },
+  sourceIndex: number,
+  settings: any,
+): Promise<{ articleId: number; tokensUsed: number } | null> {
+  let totalTokensUsed = 0;
+
+  try {
+    const { keyword, url } = sourceData;
+    const model = settings.model || "gpt-4";
+    const language = settings.language || "vi";
+
+    console.log(`\n📝 [SourceWorkflow] Step 1: Fetching content from URL`);
+    console.log(`   URL: "${url}"`);
+
+    // STEP 1: Fetch content from URL
+    let sourceContent = "";
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch URL: ${response.status}`);
+      }
+
+      const html = await response.text();
+      
+      // Simple HTML to text extraction - remove tags and get main content
+      const textContent = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (textContent.length < 100) {
+        throw new Error("Fetched content is too short (less than 100 characters)");
+      }
+
+      sourceContent = textContent.substring(0, 5000); // Limit to 5000 chars
+      console.log(`✅ [SourceWorkflow] Content fetched (${sourceContent.length} characters)`);
+    } catch (fetchError: any) {
+      console.error(`❌ [SourceWorkflow] Failed to fetch URL:`, fetchError.message);
+      return null;
+    }
+
+    // STEP 2: Create article record
+    console.log(`\n📝 [SourceWorkflow] Step 2: Creating article record`);
+    const insertResult = await execute(
+      `INSERT INTO articles (
+        user_id, title, content, status, keywords, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        userId,
+        keyword + " - Đang viết",
+        "", // Empty initially, will be filled with rewritten content
+        "draft",
+        JSON.stringify([keyword]),
+      ],
+    );
+
+    const articleId = (insertResult as any).insertId;
+    console.log(`✅ [SourceWorkflow] Article created with ID: ${articleId}`);
+
+    // STEP 3: Rewrite the content using AI
+    console.log(`\n📝 [SourceWorkflow] Step 3: Rewriting content with AI`);
+    const rewriteResult = await rewriteSourceContent(
+      sourceContent,
+      keyword,
+      language,
+      userId,
+      model,
+      settings,
+    );
+
+    if (!rewriteResult.success || !rewriteResult.content) {
+      console.error(`❌ [SourceWorkflow] Failed to rewrite content`);
+      return null;
+    }
+
+    const rewrittenContent = rewriteResult.content;
+    totalTokensUsed += rewriteResult.tokensUsed || 0;
+    console.log(`✅ [SourceWorkflow] Content rewritten (${rewrittenContent.length} characters, ${rewriteResult.tokensUsed} tokens)`);
+
+    // STEP 4: Save rewritten content to DB
+    console.log(`\n📝 [SourceWorkflow] Step 4: Saving rewritten content`);
+    await execute(
+      `UPDATE articles SET content = ? WHERE id = ?`,
+      [rewrittenContent, articleId],
+    );
+    console.log(`✅ [SourceWorkflow] Content saved`);
+
+    // STEP 5: Generate SEO title
+    console.log(`\n📝 [SourceWorkflow] Step 5: Generating SEO title`);
+    const seoTitleResult = await generateBatchWriteSeoTitle(
+      keyword,
+      language,
+      userId,
+      model,
+    );
+
+    if (!seoTitleResult.success) {
+      console.warn(`⚠️ [SourceWorkflow] Failed to generate SEO title, using keyword`);
+    } else {
+      totalTokensUsed += seoTitleResult.tokensUsed || 0;
+    }
+
+    const seoTitle = seoTitleResult.seoTitle || keyword;
+    console.log(`✅ [SourceWorkflow] SEO title: "${seoTitle}"`);
+
+    // STEP 6: Generate Meta Description
+    console.log(`\n📝 [SourceWorkflow] Step 6: Generating meta description`);
+    const metaDescResult = await generateBatchWriteMetaDescription(
+      keyword,
+      seoTitle,
+      language,
+      userId,
+      model,
+    );
+
+    if (!metaDescResult.success) {
+      console.warn(`⚠️ [SourceWorkflow] Failed to generate meta description`);
+    } else {
+      totalTokensUsed += metaDescResult.tokensUsed || 0;
+    }
+
+    const metaDescription = metaDescResult.metaDescription || "";
+    console.log(`✅ [SourceWorkflow] Meta description: "${metaDescription.substring(0, 80)}..."`);
+
+    // STEP 7: Save SEO metadata
+    console.log(`\n📝 [SourceWorkflow] Step 7: Saving SEO metadata`);
+    await execute(
+      `UPDATE articles SET title = ?, meta_title = ?, meta_description = ?, status = 'completed' WHERE id = ?`,
+      [seoTitle, seoTitle, metaDescription, articleId],
+    );
+    console.log(`✅ [SourceWorkflow] Article completed`);
+
+    return { articleId, tokensUsed: totalTokensUsed };
+  } catch (error: any) {
+    console.error(`[SourceWorkflow] Error:`, error);
+    return null;
+  }
+}
+
+/**
+ * Rewrite source content using AI
+ */
+async function rewriteSourceContent(
+  content: string,
+  keyword: string,
+  language: string,
+  userId: number,
+  model: string,
+  settings: any,
+): Promise<{ success: boolean; content?: string; tokensUsed: number }> {
+  try {
+    const voiceAndTone = settings.voiceAndTone || "Neutral";
+    const writingMethod = settings.writingMethod || "keep-headings";
+    const languageName = getLanguageName(language);
+
+    // Build rewrite prompt
+    let prompt = `You are an expert content writer. Rewrite the following source content about "${keyword}".\n\n`;
+    
+    if (writingMethod === "deep-rewrite") {
+      prompt += `IMPORTANT: This is a DEEP rewrite. Completely rewrite the content in your own words, using different sentence structures and expressions. The result should be unique and avoid any direct copying from the source.\n\n`;
+    } else if (writingMethod === "rewrite-all") {
+      prompt += `Rewrite all content including headings and body text. Make it more engaging and better structured.\n\n`;
+    } else {
+      prompt += `Rewrite the content while keeping the same heading structure. Improve clarity and readability.\n\n`;
+    }
+
+    prompt += `Content voice and tone: ${voiceAndTone}\n`;
+    prompt += `Language: ${languageName}\n\n`;
+    
+    prompt += `Source Content:\n${content}\n\n`;
+    prompt += `Rewritten Content (${languageName}):`;
+
+    // Call AI service to rewrite
+    const estimatedTokens = Math.ceil(content.length / 4) + 500;
+    
+    const result = await aiService.generateContentWithStreaming(
+      prompt,
+      {
+        model: model,
+        temperature: 0.7,
+        maxTokens: Math.min(estimatedTokens * 2, 4000),
+        language: language,
+      },
+      userId,
+    );
+
+    if (!result || !result.content) {
+      return { success: false, tokensUsed: 0 };
+    }
+
+    // Clean up the response
+    let rewrittenContent = result.content.trim();
+    
+    // Remove leading phrases like "Here is the rewritten content:" or similar
+    rewrittenContent = rewrittenContent
+      .replace(/^(here'?s?|here is|below is|following is|the rewritten content|rewritten content).*?:/gi, "")
+      .trim();
+
+    return {
+      success: true,
+      content: rewrittenContent,
+      tokensUsed: result.tokensUsed || estimatedTokens,
+    };
+  } catch (error: any) {
+    console.error(`[RewriteSourceContent] Error:`, error);
+    return { success: false, tokensUsed: 0 };
   }
 }
 
