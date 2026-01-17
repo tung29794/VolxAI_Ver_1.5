@@ -264,12 +264,17 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
           break;
 
         case "keywords":
+          if (!keywordsData.content.trim()) {
+            toast.error("Vui lòng nhập hoặc dán nội dung bài viết");
+            return;
+          }
           if (!keywordsData.keywords.trim()) {
             toast.error("Vui lòng nhập từ khóa");
             return;
           }
           payload = {
             ...payload,
+            content: keywordsData.content,
             keywords: keywordsData.keywords,
             voiceAndTone: keywordsData.voiceAndTone,
             writingMethod: keywordsData.writingMethod,
