@@ -12,12 +12,10 @@ import {
 } from "@/components/ui/select";
 import {
   ChevronLeft,
-  Upload,
   FileText,
   Sparkles,
   Zap,
   Loader2,
-  X,
 } from "lucide-react";
 import { buildApiUrl } from "@/lib/api";
 import { toast } from "sonner";
