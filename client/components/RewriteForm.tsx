@@ -460,7 +460,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
                   <SelectValue placeholder="Chọn website" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Không sử dụng</SelectItem>
+                  <SelectItem value="none">Không sử dụng</SelectItem>
                   {websites.map((website) => (
                     <SelectItem key={website.id} value={website.id.toString()}>
                       {website.name}
