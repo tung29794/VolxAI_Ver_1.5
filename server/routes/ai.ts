@@ -939,12 +939,10 @@ const handleRewrite: RequestHandler = async (req, res) => {
     );
 
     if (!apiKeyRecord?.api_key) {
-      res
-        .status(500)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(500).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -1244,12 +1242,10 @@ const handleFindImage: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "No available image search API keys. Please add API keys in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "No available image search API keys. Please add API keys in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -1476,12 +1472,10 @@ const handleWriteMore: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -4173,12 +4167,10 @@ const handleGenerateSeoTitle: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -4356,12 +4348,10 @@ const handleGenerateMetaDescription: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -4536,12 +4526,10 @@ const handleGenerateArticleTitle: RequestHandler = async (req, res) => {
     );
 
     if (apiKeys.length === 0) {
-      res
-        .status(503)
-        .json({
-          error:
-            "OpenAI API key not configured. Please add it in Admin > Quản lý API",
-        });
+      res.status(503).json({
+        error:
+          "OpenAI API key not configured. Please add it in Admin > Quản lý API",
+      });
       return;
     }
 
@@ -7400,12 +7388,10 @@ const handleUnifiedRewrite: RequestHandler = async (req, res) => {
 
     // Mode-specific validation
     if (mode === "paragraph" && !content) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Content is required for paragraph mode",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Content is required for paragraph mode",
+      });
     }
     if (mode === "keywords" && (!content || !keywords)) {
       return res.status(400).json({
