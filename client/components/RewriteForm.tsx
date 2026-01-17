@@ -277,8 +277,9 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
         return;
       }
 
-      let endpoint = "";
+      let mode = rewriteMode;
       let payload: any = {
+        mode: mode,
         model: commonData.model,
         language: commonData.language,
         autoInsertImages: commonData.autoInsertImages,
@@ -298,7 +299,6 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
             toast.error("Vui lòng nhập hoặc tải lên nội dung đoạn văn");
             return;
           }
-          endpoint = "/api/ai/rewrite-paragraph";
           payload = {
             ...payload,
             content: paragraphData.content,
@@ -311,7 +311,6 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
             toast.error("Vui lòng nhập từ khóa");
             return;
           }
-          endpoint = "/api/ai/rewrite-keywords";
           payload = {
             ...payload,
             keywords: keywordsData.keywords,
@@ -329,7 +328,6 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
             toast.error("Vui lòng nhập từ khóa");
             return;
           }
-          endpoint = "/api/ai/rewrite-url";
           payload = {
             ...payload,
             url: urlData.url,
@@ -344,7 +342,6 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
             toast.error("Vui lòng nhập hoặc tải lên nội dung tin tức");
             return;
           }
-          endpoint = "/api/ai/rewrite-news";
           payload = {
             ...payload,
             content: newsData.content,
@@ -353,7 +350,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
           break;
       }
 
-      const response = await fetch(buildApiUrl(endpoint), {
+      const response = await fetch(buildApiUrl("/api/ai/rewrite"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -366,7 +363,10 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
 
       if (data.success) {
         toast.success("Bài viết đã được viết lại thành công!");
-        // TODO: Handle the rewritten content - show it or redirect
+        // TODO: Handle the rewritten content - show it or redirect to editor
+        if (data.articleId) {
+          window.location.href = `/article/${data.articleId}`;
+        }
       } else {
         toast.error(data.message || "Lỗi khi viết lại bài viết");
       }
