@@ -111,7 +111,6 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
   const [loadingModels, setLoadingModels] = useState(true);
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loadingWebsites, setLoadingWebsites] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Common form data
