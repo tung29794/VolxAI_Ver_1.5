@@ -7425,7 +7425,12 @@ const handleUnifiedRewrite: RequestHandler = async (req, res) => {
     }
 
     // Estimate tokens (simplified: 1 word ≈ 1.3 tokens)
-    const textToEstimate = content || keywords || url || "";
+    let textToEstimate = "";
+    if (mode === "keywords") {
+      textToEstimate = (content || "") + " " + (keywords || "");
+    } else {
+      textToEstimate = content || keywords || url || "";
+    }
     const estimatedTokens = Math.ceil(
       textToEstimate.split(" ").length * 1.3 * 2,
     ); // Double for rewrite output
