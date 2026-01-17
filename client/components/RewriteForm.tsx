@@ -349,9 +349,9 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
     },
     {
       id: "keywords" as RewriteMode,
-      label: "Viết lại theo từ khoá",
+      label: "Viết lại bài viết theo từ khoá",
       icon: Sparkles,
-      description: "Viết lại dựa trên từ khoá được chỉ định",
+      description: "Viết lại bài viết dựa trên từ khoá được chỉ định",
     },
     {
       id: "url" as RewriteMode,
