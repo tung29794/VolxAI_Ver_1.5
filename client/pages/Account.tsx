@@ -34,6 +34,7 @@ import WritingProgressView from "@/components/WritingProgressView";
 import UserArticles from "@/components/UserArticles";
 import WebsiteManagement from "@/components/WebsiteManagement";
 import BatchJobsList from "@/components/BatchJobsList";
+import RewriteForm from "@/components/RewriteForm";
 
 type AccountTab =
   | "profile"
