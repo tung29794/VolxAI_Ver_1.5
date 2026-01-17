@@ -385,11 +385,11 @@ router.post("/payments/:id/approve", async (req: Request, res: Response) => {
       ],
     );
 
-    // CRITICAL: Also update tokens_remaining in users table to match tokens_limit
-    // This ensures user can immediately use their new tokens
+    // CRITICAL: Also update tokens_remaining and article_limit in users table to match subscription
+    // This ensures user can immediately use their new tokens and articles
     await execute(
-      "UPDATE users SET tokens_remaining = ? WHERE id = ?",
-      [newTokensLimit, payment.user_id]
+      "UPDATE users SET tokens_remaining = ?, article_limit = ? WHERE id = ?",
+      [newTokensLimit, newArticlesLimit, payment.user_id]
     );
 
     res.json({

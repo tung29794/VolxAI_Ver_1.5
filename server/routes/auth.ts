@@ -299,6 +299,12 @@ router.get("/me", async (req: Request, res: Response) => {
           [subscription.id, 10000, 2],
         );
 
+        // Also update users table to reflect downgrade
+        await execute(
+          "UPDATE users SET tokens_remaining = ?, article_limit = ? WHERE id = ?",
+          [10000, 2, decoded.userId],
+        );
+
         // Update the subscription object
         subscription = {
           ...subscription,
@@ -631,10 +637,10 @@ router.post("/confirm-payment", async (req: Request, res: Response) => {
       [newPlan, newPlanDetails.tokens, newPlanDetails.articles, decoded.userId],
     );
 
-    // CRITICAL: Update tokens_remaining in users table to match new plan
+    // CRITICAL: Update tokens_remaining and article_limit in users table to match new plan
     await execute(
-      "UPDATE users SET tokens_remaining = ? WHERE id = ?",
-      [newPlanDetails.tokens, decoded.userId]
+      "UPDATE users SET tokens_remaining = ?, article_limit = ? WHERE id = ?",
+      [newPlanDetails.tokens, newPlanDetails.articles, decoded.userId]
     );
 
     // Record subscription history
