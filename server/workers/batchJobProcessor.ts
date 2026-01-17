@@ -160,8 +160,13 @@ async function processJob(job: BatchJob) {
       }
 
       // Check user's current limits
+      // Get tokens from users table and articles_limit from user_subscriptions table
       const users = await query<any>(
-        "SELECT tokens_remaining, article_limit FROM users WHERE id = ?",
+        "SELECT tokens_remaining FROM users WHERE id = ?",
+        [job.user_id]
+      );
+      const subscriptions = await query<any>(
+        "SELECT articles_limit FROM user_subscriptions WHERE user_id = ? AND is_active = TRUE",
         [job.user_id]
       );
 
@@ -170,9 +175,15 @@ async function processJob(job: BatchJob) {
         return;
       }
 
+      if (!subscriptions || subscriptions.length === 0) {
+        await markJobAsFailed(job.id, "User subscription not found");
+        return;
+      }
+
       const user = users[0];
+      const subscription = subscriptions[0];
       const tokensRemaining = user.tokens_remaining || 0;
-      const articleLimit = user.article_limit || 0;
+      const articleLimit = subscription.articles_limit || 0;
 
       // Check if user has reached limits
       if (tokensRemaining <= 0) {
