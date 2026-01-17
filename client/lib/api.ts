@@ -164,7 +164,11 @@ export function isAuthenticated(): boolean {
  * Used for all API calls that need full URLs (cross-domain requests)
  */
 export function buildApiUrl(path: string): string {
-  // Remove leading slash if present
+  // If API_BASE_URL is empty (development mode), use relative path directly
+  if (API_BASE_URL === '') {
+    return path;
+  }
+  // Otherwise, combine base URL with path
   const cleanPath = path.startsWith("/") ? path.slice(1) : path;
   return `${API_BASE_URL}/${cleanPath}`;
 }
