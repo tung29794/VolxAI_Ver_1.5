@@ -204,60 +204,6 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
     fetchWebsites();
   }, []);
 
-  // Handle file upload
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Check file type
-    const validTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/plain",
-    ];
-
-    if (!validTypes.includes(file.type)) {
-      toast.error("Vui lòng tải lên file PDF, DOC, DOCX hoặc TXT");
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const token = localStorage.getItem("authToken");
-      if (!token) return;
-
-      setIsLoading(true);
-      const response = await fetch(buildApiUrl("/api/ai/extract-text"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (data.success && data.text) {
-        setParagraphData((prev) => ({
-          ...prev,
-          content: data.text,
-        }));
-        toast.success("Nội dung file đã được tải lên thành công");
-      } else {
-        toast.error(data.message || "Không thể trích xuất nội dung từ file");
-      }
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      toast.error("Lỗi khi tải lên file");
-    } finally {
-      setIsLoading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
 
   // Validate and submit
   const handleSubmit = async (e: React.FormEvent) => {
