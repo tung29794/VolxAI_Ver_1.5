@@ -577,6 +577,27 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
           {/* Mode 2: Keywords Rewrite */}
           {rewriteMode === "keywords" && (
             <div className="space-y-4">
+              {/* Article Content Editor */}
+              <div className="space-y-2">
+                <Label htmlFor="keywordsContent">Nội dung bài viết</Label>
+                <div className="border rounded-md overflow-hidden">
+                  <MemoizedQuill
+                    quillRef={keywordsQuillRef}
+                    content={keywordsData.content}
+                    setContent={(value) =>
+                      setKeywordsData((prev) => ({
+                        ...prev,
+                        content: value,
+                      }))
+                    }
+                    modules={quillModules}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Nhập hoặc dán nội dung bài viết cần viết lại...
+                </p>
+              </div>
+
               {/* Keywords Input */}
               <div className="space-y-2">
                 <Label htmlFor="keywords">Từ khóa</Label>
