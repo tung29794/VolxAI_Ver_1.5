@@ -6349,7 +6349,214 @@ Write the complete article content now (without repeating the title):`; // Fallb
   }
 };
 
-router.post("/rewrite", handleRewrite);
+/**
+ * Unified Rewrite Handler - Supports 4 rewrite modes:
+ * 1. paragraph: Rewrite paragraph with specified writing style
+ * 2. keywords: Rewrite based on keywords with voice/tone and method
+ * 3. url: Rewrite from URL with keywords and options
+ * 4. news: Rewrite news content with creativity level
+ */
+const handleUnifiedRewrite: RequestHandler = async (req, res) => {
+  try {
+    if (!(await verifyUser(req, res))) return;
+    const userId = (req as any).userId;
+
+    const {
+      mode = "paragraph",
+      content,
+      url,
+      keywords,
+      writingStyle,
+      voiceAndTone,
+      writingMethod,
+      creativityLevel,
+      language = "vi",
+      model = "gpt-3.5-turbo",
+      websiteKnowledge,
+      autoInsertImages = false,
+    } = req.body;
+
+    // Validate mode
+    const validModes = ["paragraph", "keywords", "url", "news"];
+    if (!validModes.includes(mode)) {
+      return res.status(400).json({ success: false, error: "Invalid rewrite mode" });
+    }
+
+    // Mode-specific validation
+    if (mode === "paragraph" && !content) {
+      return res.status(400).json({ success: false, error: "Content is required for paragraph mode" });
+    }
+    if (mode === "keywords" && !keywords) {
+      return res.status(400).json({ success: false, error: "Keywords are required" });
+    }
+    if (mode === "url" && (!url || !keywords)) {
+      return res.status(400).json({ success: false, error: "URL and keywords are required" });
+    }
+    if (mode === "news" && !content) {
+      return res.status(400).json({ success: false, error: "Content is required for news mode" });
+    }
+
+    // Estimate tokens (simplified: 1 word ≈ 1.3 tokens)
+    const textToEstimate = content || keywords || url || "";
+    const estimatedTokens = Math.ceil((textToEstimate.split(" ").length * 1.3) * 2); // Double for rewrite output
+
+    // Check token balance
+    const tokenCheck = await checkTokensMiddleware(userId, estimatedTokens, "REWRITE");
+    if (!tokenCheck.allowed) {
+      return res.status(402).json({
+        success: false,
+        error: "Insufficient tokens",
+        requiredTokens: estimatedTokens,
+        remainingTokens: tokenCheck.remainingTokens,
+      });
+    }
+
+    // Get API key based on model
+    let apiKey = "";
+    let provider = "openai";
+
+    // For now, default to OpenAI for rewrite
+    const apiKeyRecord = await queryOne<any>(
+      "SELECT api_key FROM api_keys WHERE provider = 'openai' AND category = 'content' AND is_active = 1 LIMIT 1",
+      []
+    );
+
+    if (!apiKeyRecord?.api_key) {
+      return res.status(500).json({
+        success: false,
+        error: "OpenAI API key not configured"
+      });
+    }
+
+    apiKey = apiKeyRecord.api_key;
+
+    // Build the rewrite prompt based on mode
+    let systemPrompt = getSystemPrompt('ai_rewrite');
+    let userPrompt = "";
+
+    const languageNames: Record<string, string> = {
+      vi: "Vietnamese",
+      en: "English",
+      es: "Spanish",
+      fr: "French",
+      de: "German",
+      pt: "Portuguese",
+    };
+
+    const languageName = languageNames[language] || "English";
+    const languageInstruction = language !== "en"
+      ? `\n\nWrite in ${languageName}.`
+      : "";
+
+    switch (mode) {
+      case "paragraph":
+        userPrompt = `Rewrite the following paragraph in ${writingStyle} style.${languageInstruction}\n\nOriginal text:\n${content}`;
+        break;
+
+      case "keywords":
+        const methodDesc: Record<string, string> = {
+          "keep-headings": "Keep existing H2, H3, H4 headings as-is, only rewrite content.",
+          "rewrite-all": "Rewrite both content and headings completely.",
+          "deep-rewrite": "Deep rewrite - avoid any 100% duplicate content.",
+        };
+        userPrompt = `Rewrite an article with the following details:
+Keywords: ${keywords}
+Voice & Tone: ${voiceAndTone}
+Writing Method: ${methodDesc[writingMethod] || "Standard"}${languageInstruction}\n\nNote: Use these keywords naturally throughout the article to maintain SEO value.`;
+        break;
+
+      case "url":
+        userPrompt = `Fetch and rewrite the content from this URL: ${url}
+Keywords to optimize: ${keywords}
+Voice & Tone: ${voiceAndTone}
+Writing Method: ${writingMethod}${languageInstruction}`;
+        break;
+
+      case "news":
+        const creativityDesc: Record<string, string> = {
+          low: "Make minimal changes - keep content mostly the same with slight wording improvements.",
+          medium: "Change content length and structure moderately.",
+          high: "Transform completely - change style, structure, and length significantly.",
+        };
+        userPrompt = `Rewrite the following news article with ${creativityDesc[creativityLevel] || "moderate"} changes.${languageInstruction}\n\nOriginal content:\n${content}`;
+        break;
+    }
+
+    // Inject website knowledge if provided
+    if (websiteKnowledge) {
+      systemPrompt = injectWebsiteKnowledge(systemPrompt, websiteKnowledge);
+    }
+
+    // Call OpenAI API
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: mode === "news" && creativityLevel === "high" ? 0.8 : 0.6,
+        max_tokens: 4000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("OpenAI API error:", errorData);
+      return res.status(response.status).json({
+        success: false,
+        error: "Failed to generate rewritten content"
+      });
+    }
+
+    const data = await response.json();
+    const rewrittenContent = data.choices?.[0]?.message?.content || "";
+
+    if (!rewrittenContent) {
+      return res.status(500).json({
+        success: false,
+        error: "No content generated"
+      });
+    }
+
+    // Calculate actual tokens used
+    const actualTokens = await calculateTokens(rewrittenContent, 'ai_rewrite_text', false, "gpt-3.5-turbo");
+
+    // Deduct tokens
+    await execute(
+      "UPDATE users SET tokens_remaining = tokens_remaining - ? WHERE id = ?",
+      [actualTokens, userId]
+    );
+
+    // Get remaining tokens
+    const userRows: any = await query("SELECT tokens_remaining FROM users WHERE id = ?", [userId]);
+    const remainingTokens = userRows[0]?.tokens_remaining || 0;
+
+    // Return success with rewritten content
+    return res.json({
+      success: true,
+      content: rewrittenContent,
+      mode,
+      tokensUsed: actualTokens,
+      remainingTokens,
+      message: "Content successfully rewritten!",
+    });
+
+  } catch (error) {
+    console.error("Error in unified rewrite:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error"
+    });
+  }
+};
+
+router.post("/rewrite", handleUnifiedRewrite);
 router.post("/find-image", handleFindImage);
 router.post("/write-more", handleWriteMore);
 router.post("/generate-outline", handleGenerateOutline); // NEW: Generate outline endpoint
