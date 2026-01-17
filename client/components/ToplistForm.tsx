@@ -302,6 +302,7 @@ export default function ToplistForm({
             language: formData.language,
             tone: formData.tone,
             length: formData.outlineLength,
+            websiteId: formData.websiteId || undefined,
           }),
         },
       );

@@ -182,6 +182,7 @@ interface GenerateOutlineOptions {
   tone: string;
   model: string; // GPT 4, GPT 5, etc.
   userId: number;
+  websiteKnowledge?: string; // optional website knowledge for higher-priority style
 }
 
 /**
@@ -390,6 +391,9 @@ interface GenerateArticleOptions {
   model: string;
   length: string;
   userId: number;
+  // Writing method (for rewrite-from-source / batch_source flows)
+  // Examples: keep-headings, rewrite-all, deep-rewrite
+  writingMethod?: string;
   // SEO Options
   internalLinks?: string;
   endContent?: string;
@@ -558,7 +562,7 @@ export async function generateOutline(
   options: GenerateOutlineOptions
 ): Promise<OutlineResult> {
   try {
-    const { keyword, language, length, tone, model, userId } = options;
+    const { keyword, language, length, tone, model, userId, websiteKnowledge } = options;
 
     console.log(`🎯 [AIService] Generating outline for: "${keyword}"`);
 
@@ -620,7 +624,11 @@ export async function generateOutline(
     const languageName = language === "vi" ? "Vietnamese" : language;
 
     // Get system and user prompts
-    const systemPrompt = getSystemPrompt("generate_outline");
+    let systemPrompt = getSystemPrompt("generate_outline");
+    // If website knowledge is provided, inject it at the top with highest priority
+    if (websiteKnowledge && websiteKnowledge.trim().length > 0) {
+      systemPrompt = injectWebsiteKnowledge(systemPrompt, websiteKnowledge);
+    }
     const promptTemplate = await loadPrompt("generate_outline");
 
     let userPrompt = "";
@@ -1046,6 +1054,7 @@ export async function generateArticleContent(
       userId,
       useGoogleSearch,
       websiteId,
+      writingMethod,
     } = options;
 
     console.log(`📝 [AIService] Generating article for: "${keyword}"`);
@@ -1149,6 +1158,21 @@ export async function generateArticleContent(
 - Write detailed, comprehensive paragraphs
 - Each section should have multiple paragraphs`;
 
+    // Writing method instruction (for rewrite-style behaviours)
+    let writingMethodInstruction = "";
+    const normalizedMethod = (writingMethod || "").toLowerCase();
+
+    if (normalizedMethod === "keep-headings") {
+      writingMethodInstruction =
+        "KEEP the overall heading structure from the provided outline. You may refine titles slightly, but do NOT add many new sections or radically change the hierarchy. Focus on rewriting sentences and paragraphs while preserving the main sections.";
+    } else if (normalizedMethod === "rewrite-all") {
+      writingMethodInstruction =
+        "You are allowed to rewrite BOTH headings and body text. You can rename, merge, or slightly reorder headings to improve clarity, as long as you still cover all main ideas from the outline.";
+    } else if (normalizedMethod === "deep-rewrite") {
+      writingMethodInstruction =
+        "Perform a DEEP rewrite. You may restructure sections, add or remove sub-sections, and express ideas with very different wording, as long as you keep the same overall topic and main information. Prioritize uniqueness and natural flow.";
+    }
+
     // Get system prompt
     let systemPrompt = getSystemPrompt("generate_article");
     
@@ -1226,6 +1250,8 @@ export async function generateArticleContent(
         outline_mode: outlineMode,
         paragraph_words: paragraphWords,
         outline: finalOutline || "",
+        writing_method_instruction: writingMethodInstruction,
+        writing_method: writingMethod || "",
       });
     } else {
       // Fallback
@@ -1234,6 +1260,8 @@ export async function generateArticleContent(
 ${languageInstruction}
 Tone: ${tone}
 ${lengthInstruction}
+
+${writingMethodInstruction ? `Writing method:\n${writingMethodInstruction}\n` : ""}
 
 ${finalOutline ? `Use this outline:\n${finalOutline}` : ""}
 

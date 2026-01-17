@@ -603,6 +603,7 @@ async function processKeywordLine(
       outlineType: settings?.outlineOption || "no-outline",
       customOutline: settings?.customOutline || "",
       length: settings?.length || "medium",
+      websiteId: settings?.websiteId ? String(settings.websiteId) : undefined,
     });
 
     if (!contentResult.success || !contentResult.content) {
@@ -765,6 +766,13 @@ async function processSourceLine(
     const voiceAndTone = settings?.voiceAndTone || "Trung lập";
     const writingMethod = settings?.writingMethod || "keep-headings";
 
+    const languageName =
+      language === "vi"
+        ? "Vietnamese"
+        : language === "en"
+        ? "English"
+        : language;
+
     console.log(`  🔗 Source URL: ${sourceUrl}`);
     console.log(`  🎯 Keyword: ${keyword}`);
     console.log(`  🤖 Model: ${model}`);
@@ -824,8 +832,101 @@ async function processSourceLine(
       );
     }
 
-    // STEP 2: Create article record
-    console.log(`  📝 Step 2: Creating article record`);
+    // STEP 2: Prepare model & generate outline/key ideas from source content
+    console.log(
+      `  📝 Step 2: Preparing model and generating outline from source content`,
+    );
+
+    // Get model configuration (shared for outline + article generation)
+    const modelConfigResult = await execute(
+      `SELECT model_id, provider FROM ai_models 
+       WHERE (model_id = ? OR display_name = ?) AND is_active = TRUE 
+       LIMIT 1`,
+      [model, model],
+    );
+
+    if (!modelConfigResult || (modelConfigResult as any[]).length === 0) {
+      throw new Error(`Model "${model}" not found or inactive`);
+    }
+
+    const modelInfo = (modelConfigResult as any[])[0];
+    const actualModel = modelInfo.model_id;
+    const provider = modelInfo.provider;
+
+    // Get API key
+    const apiKeyResult = await execute(
+      `SELECT api_key FROM api_keys
+       WHERE provider = ? AND category = 'content' AND is_active = TRUE
+       LIMIT 1`,
+      [provider],
+    );
+
+    if (!apiKeyResult || (apiKeyResult as any[]).length === 0) {
+      throw new Error(`No active API key found for provider: ${provider}`);
+    }
+
+    const apiKey = (apiKeyResult as any[])[0].api_key;
+
+    let summaryOutline = "";
+    try {
+      console.log(
+        `  📝 Step 2a: Generating outline / key ideas from source content`,
+      );
+
+      let outlineSystemPrompt =
+        "You are an expert content strategist. Your job is to read long source articles and extract a clear, well-structured outline of the main sections and key ideas.";
+
+      // Inject website knowledge at the highest-priority level if available
+      if (settings?.websiteKnowledge && String(settings.websiteKnowledge).trim().length > 0) {
+        outlineSystemPrompt = injectWebsiteKnowledge(
+          outlineSystemPrompt,
+          String(settings.websiteKnowledge),
+        );
+      }
+
+      let outlineUserPrompt = `Based on the following source article about "${keyword}", create a detailed outline of the main sections and key ideas.\n\n`;
+      outlineUserPrompt += "Requirements:\n";
+      outlineUserPrompt += `- Write headings in ${languageName}.\n`;
+      outlineUserPrompt += `- Target voice and tone: ${voiceAndTone}.\n`;
+      outlineUserPrompt += `- Writing method preference: ${writingMethod} (keep original structure vs rewrite vs deep rewrite).\n`;
+      outlineUserPrompt +=
+        "- Use the following outline format (IMPORTANT):\\n  - [h2] Main section title\\n  - [h3] Subsection title\\n";
+      outlineUserPrompt +=
+        "- Focus only on structure and key ideas, NOT full paragraphs.\\n";
+      outlineUserPrompt +=
+        "- Do NOT write the full article, only the outline with short notes if really necessary.\\n\\n";
+      outlineUserPrompt += `Source content (truncated):\n${sourceContent}\n`;
+
+      const outlineResult = await callAI(
+        provider,
+        apiKey,
+        actualModel,
+        outlineSystemPrompt,
+        outlineUserPrompt,
+        1500,
+        0.5,
+      );
+
+      if (outlineResult.success && outlineResult.content) {
+        summaryOutline = outlineResult.content.trim();
+        totalTokensUsed += outlineResult.tokensUsed || 0;
+        console.log(
+          `  ✅ Outline generated from source (${summaryOutline.length} chars)`,
+        );
+      } else {
+        console.warn(
+          `  ⚠️ Failed to generate outline from source: ${outlineResult.error}`,
+        );
+      }
+    } catch (outlineError: any) {
+      console.error(
+        `  ❌ Error while generating outline from source:`,
+        outlineError?.message || outlineError,
+      );
+    }
+
+    // STEP 3: Create article record
+    console.log(`  📝 Step 3: Creating article record`);
     const insertResult = await execute(
       `INSERT INTO articles (user_id, title, content, status, keywords, created_at, updated_at) 
        VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
@@ -842,95 +943,116 @@ async function processSourceLine(
     if (!articleId) throw new Error("Failed to create article record");
     console.log(`  ✅ Article created: #${articleId}`);
 
-    // STEP 3: Rewrite content using AI
-    console.log(`  📝 Step 3: Rewriting content with AI`);
-    const languageName = language === "vi" ? "Vietnamese" : language === "en" ? "English" : language;
-    
-    // Get model configuration
-    const modelConfigResult = await execute(
-      `SELECT model_id, provider FROM ai_models 
-       WHERE (model_id = ? OR display_name = ?) AND is_active = TRUE 
-       LIMIT 1`,
-      [model, model]
-    );
-    
-    if (!modelConfigResult || (modelConfigResult as any[]).length === 0) {
-      throw new Error(`Model "${model}" not found or inactive`);
-    }
-
-    const modelInfo = (modelConfigResult as any[])[0];
-    const actualModel = modelInfo.model_id;
-    const provider = modelInfo.provider;
-
-    // Get API key
-    const apiKeyResult = await execute(
-      `SELECT api_key FROM api_keys
-       WHERE provider = ? AND category = 'content' AND is_active = TRUE
-       LIMIT 1`,
-      [provider]
+    // STEP 4: Generate full article content from outline (preferred) or fallback to direct rewrite
+    console.log(
+      `  📝 Step 4: Generating article content from outline or source`,
     );
 
-    if (!apiKeyResult || (apiKeyResult as any[]).length === 0) {
-      throw new Error(`No active API key found for provider: ${provider}`);
-    }
+    let rewrittenContent = "";
 
-    const apiKey = (apiKeyResult as any[])[0].api_key;
+    if (summaryOutline && summaryOutline.trim().length > 0) {
+      console.log(
+        `  📋 Using outline-based generation via AI service (generateArticleContent)`,
+      );
 
-    // Build rewrite prompt
-    let systemPrompt = `You are an expert content writer. Your task is to rewrite articles in a natural, engaging way.`;
-    
-    let userPrompt = `Rewrite the following source content about "${keyword}".\n\n`;
-    
-    if (writingMethod === "deep-rewrite") {
-      userPrompt += `IMPORTANT: This is a DEEP rewrite. Completely rewrite the content in your own words, using different sentence structures and expressions. The result should be unique and avoid any direct copying from the source.\n\n`;
-    } else if (writingMethod === "rewrite-all") {
-      userPrompt += `Rewrite all content including headings and body text. Make it more engaging and better structured.\n\n`;
+      const lengthSetting = settings?.length || "medium";
+
+      const articleResult = await aiService.generateArticleContent({
+        keyword,
+        language,
+        outlineType: "your-outline",
+        customOutline: summaryOutline,
+        tone: voiceAndTone,
+        model,
+        length: lengthSetting,
+        userId,
+        writingMethod,
+        websiteId: settings?.websiteId
+          ? String(settings.websiteId)
+          : undefined,
+      } as any);
+
+      if (!articleResult.success || !articleResult.content) {
+        throw new Error(
+          `Failed to generate article from outline: ${articleResult.error}`,
+        );
+      }
+
+      rewrittenContent = articleResult.content.trim();
+      totalTokensUsed += articleResult.tokensUsed || 0;
+      console.log(
+        `  ✅ Article generated from outline: ${rewrittenContent.length} chars (${articleResult.tokensUsed} tokens)`,
+      );
     } else {
-      userPrompt += `Rewrite the content while keeping similar heading structure. Improve clarity and readability.\n\n`;
+      console.log(
+        `  ⚠️ No outline available, falling back to direct rewrite of source content`,
+      );
+
+      // Build rewrite prompt (previous behaviour)
+      let systemPrompt =
+        "You are an expert content writer. Your task is to rewrite articles in a natural, engaging way.";
+
+      let userPrompt = `Rewrite the following source content about "${keyword}".\n\n`;
+
+      if (writingMethod === "deep-rewrite") {
+        userPrompt +=
+          "IMPORTANT: This is a DEEP rewrite. Completely rewrite the content in your own words, using different sentence structures and expressions. The result should be unique and avoid any direct copying from the source.\n\n";
+      } else if (writingMethod === "rewrite-all") {
+        userPrompt +=
+          "Rewrite all content including headings and body text. Make it more engaging and better structured.\n\n";
+      } else {
+        userPrompt +=
+          "Rewrite the content while keeping similar heading structure. Improve clarity and readability.\n\n";
+      }
+
+      userPrompt += `Content voice and tone: ${voiceAndTone}\n`;
+      userPrompt += `Language: ${languageName}\n`;
+      userPrompt += `Target keyword: ${keyword}\n\n`;
+      userPrompt += `Source Content:\n${sourceContent}\n\n`;
+      userPrompt += `Rewritten Content (${languageName}, in HTML format with proper headings):`;
+
+      const estimatedTokens = Math.ceil(sourceContent.length / 4) + 1000;
+
+      const rewriteResult = await callAI(
+        provider,
+        apiKey,
+        actualModel,
+        systemPrompt,
+        userPrompt,
+        Math.min(estimatedTokens * 2, 4000),
+        0.7,
+      );
+
+      if (!rewriteResult.success || !rewriteResult.content) {
+        throw new Error(`Failed to rewrite content: ${rewriteResult.error}`);
+      }
+
+      rewrittenContent = rewriteResult.content.trim();
+
+      // Clean up response
+      rewrittenContent = rewrittenContent
+        .replace(
+          /^(here'?s?|here is|below is|following is|the rewritten content|rewritten content).*?:/gi,
+          "",
+        )
+        .trim();
+
+      totalTokensUsed += rewriteResult.tokensUsed || estimatedTokens;
+      console.log(
+        `  ✅ Content rewritten: ${rewrittenContent.length} chars (${rewriteResult.tokensUsed} tokens)`,
+      );
     }
 
-    userPrompt += `Content voice and tone: ${voiceAndTone}\n`;
-    userPrompt += `Language: ${languageName}\n`;
-    userPrompt += `Target keyword: ${keyword}\n\n`;
-    userPrompt += `Source Content:\n${sourceContent}\n\n`;
-    userPrompt += `Rewritten Content (${languageName}, in HTML format with proper headings):`;
-
-    const estimatedTokens = Math.ceil(sourceContent.length / 4) + 1000;
-    
-    const rewriteResult = await callAI(
-      provider,
-      apiKey,
-      actualModel,
-      systemPrompt,
-      userPrompt,
-      Math.min(estimatedTokens * 2, 4000),
-      0.7
-    );
-
-    if (!rewriteResult.success || !rewriteResult.content) {
-      throw new Error(`Failed to rewrite content: ${rewriteResult.error}`);
-    }
-
-    let rewrittenContent = rewriteResult.content.trim();
-    
-    // Clean up response
-    rewrittenContent = rewrittenContent
-      .replace(/^(here'?s?|here is|below is|following is|the rewritten content|rewritten content).*?:/gi, "")
-      .trim();
-
-    totalTokensUsed += rewriteResult.tokensUsed || estimatedTokens;
-    console.log(`  ✅ Content rewritten: ${rewrittenContent.length} chars (${rewriteResult.tokensUsed} tokens)`);
-
-    // STEP 4: Save rewritten content
-    console.log(`  📝 Step 4: Saving rewritten content`);
+    // STEP 5: Save rewritten content
+    console.log(`  📝 Step 5: Saving rewritten content`);
     await execute(
       `UPDATE articles SET content = ? WHERE id = ?`,
       [rewrittenContent, articleId],
     );
     console.log(`  ✅ Content saved`);
 
-    // STEP 5: Generate SEO Title
-    console.log(`  📝 Step 5: Generating SEO Title`);
+    // STEP 6: Generate SEO Title
+    console.log(`  📝 Step 6: Generating SEO Title`);
     const titleModel = "gpt-3.5-turbo";
     const seoTitleResult = await aiService.generateBatchWriteSeoTitle(
       keyword,
@@ -948,8 +1070,8 @@ async function processSourceLine(
     totalTokensUsed += seoTitleResult.tokensUsed || 0;
     console.log(`  ✅ SEO Title: "${seoTitle}"`);
 
-    // STEP 6: Generate Meta Description
-    console.log(`  📝 Step 6: Generating Meta Description`);
+    // STEP 7: Generate Meta Description
+    console.log(`  📝 Step 7: Generating Meta Description`);
     const metaDescResult = await aiService.generateBatchWriteMetaDescription(
       seoTitle,
       keyword,
@@ -966,8 +1088,8 @@ async function processSourceLine(
     totalTokensUsed += metaDescResult.tokensUsed || 0;
     console.log(`  ✅ Meta Description generated`);
 
-    // STEP 7: Generate final title
-    console.log(`  📝 Step 7: Generating final article title`);
+    // STEP 8: Generate final title
+    console.log(`  📝 Step 8: Generating final article title`);
     const titleResult = await aiService.generateBatchWriteArticleTitle(
       keyword,
       userId,
@@ -984,8 +1106,8 @@ async function processSourceLine(
     totalTokensUsed += titleResult.tokensUsed || 0;
     console.log(`  ✅ Final title: "${finalTitle}"`);
 
-    // STEP 8: Update article with all metadata
-    console.log(`  📝 Step 8: Saving all metadata to article`);
+    // STEP 9: Update article with all metadata
+    console.log(`  📝 Step 9: Saving all metadata to article`);
     await execute(
       `UPDATE articles SET 
         title = ?,
@@ -997,8 +1119,8 @@ async function processSourceLine(
     );
     console.log(`  ✅ Article saved and published`);
 
-    // STEP 9: Validate
-    console.log(`  📝 Step 9: Validating article`);
+    // STEP 10: Validate
+    console.log(`  📝 Step 10: Validating article`);
     const validationErrors: string[] = [];
 
     if (!finalTitle || finalTitle.length < 40) {

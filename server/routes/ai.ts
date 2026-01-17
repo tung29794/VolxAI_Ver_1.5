@@ -1628,13 +1628,14 @@ interface GenerateOutlineRequest {
   length: string; // short, medium, long
   tone: string;
   model: string;
+  websiteId?: string;
 }
 
 const handleGenerateOutline: RequestHandler = async (req, res) => {
   try {
     if (!(await verifyUser(req, res))) return;
 
-    const { keyword, language, length, tone, model } =
+    const { keyword, language, length, tone, model, websiteId } =
       req.body as GenerateOutlineRequest;
 
     if (!keyword || !language || !length) {
@@ -1667,19 +1668,17 @@ const handleGenerateOutline: RequestHandler = async (req, res) => {
       });
     }
 
-    // Get OpenAI API key
-    const apiKeys = await query<any>(
-      `SELECT api_key FROM api_keys
-       WHERE provider = 'openai' AND category = 'content' AND is_active = TRUE
-       LIMIT 1`,
-    );
-
-    if (apiKeys.length === 0) {
-      res.status(503).json({ error: "OpenAI API key not configured" });
-      return;
+    // Optional: load website knowledge if websiteId is provided
+    let websiteKnowledge: string | undefined;
+    if (websiteId) {
+      const websiteRows = await query<any>(
+        `SELECT knowledge FROM websites WHERE id = ? AND user_id = ? LIMIT 1`,
+        [websiteId, userId],
+      );
+      if (websiteRows && websiteRows.length > 0 && websiteRows[0].knowledge) {
+        websiteKnowledge = websiteRows[0].knowledge as string;
+      }
     }
-
-    const apiKey = apiKeys[0].api_key;
 
     // Determine number of H2 and H3 sections based on length
     const outlineConfig: Record<
@@ -1707,91 +1706,22 @@ const handleGenerateOutline: RequestHandler = async (req, res) => {
 
     const languageName = language === "vi" ? "Vietnamese" : language;
 
-    // ========== Use HARDCODED System Prompt ==========
-    let systemPrompt = getSystemPrompt("generate_outline");
-    console.log("✅ Using hardcoded system prompt for generate_outline");
-
-    // ========== Load ONLY User Prompt Template from database ==========
-    const promptTemplate = await loadPrompt("generate_outline");
-
-    let userPrompt = "";
-
-    if (promptTemplate) {
-      // Use database prompt template with variable interpolation
-      userPrompt = interpolatePrompt(promptTemplate.prompt_template, {
-        keyword: keyword,
-        language: languageName,
-        length_description: config.description,
-        tone: tone,
-        h2_count: config.h2Count.toString(),
-        h3_per_h2: config.h3PerH2.toString(),
-      });
-    } else {
-      // FALLBACK: Use hardcoded user prompt
-      userPrompt = `Create a detailed article outline about: "${keyword}"
-
-REQUIREMENTS:
-- Language: ${languageName}
-- Article length: ${config.description}
-- Tone/Style: ${tone}
-- Total H2 sections: ${config.h2Count}
-- H3 subsections per H2: ${config.h3PerH2}
-
-OUTPUT FORMAT (CRITICAL):
-Output ONLY the outline structure in this exact format:
-[h2] Main Section Title 1
-[h3] Subsection 1.1
-[h3] Subsection 1.2
-[h3] Subsection 1.3
-[h2] Main Section Title 2
-[h3] Subsection 2.1
-[h3] Subsection 2.2
-... continue for all ${config.h2Count} H2 sections
-
-RULES:
-1. Use [h2] for main sections (exactly ${config.h2Count} sections)
-2. Use [h3] for subsections (${config.h3PerH2} subsections per H2)
-3. Make titles descriptive, SEO-friendly, and relevant to "${keyword}"
-4. Each title should be a complete, meaningful phrase
-5. Do NOT include introduction or conclusion explanations
-6. ONLY output the outline structure, nothing else
-
-Create the outline now:`;
-    }
-    // ===============================================
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: model === "GPT 5" ? "gpt-4-turbo" : "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
+    // Delegate to aiService.generateOutline so it can also inject website knowledge
+    const outlineResult = await generateOutline({
+      keyword,
+      language,
+      length,
+      tone,
+      model,
+      userId,
+      websiteKnowledge,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
-      res.status(500).json({ error: "Failed to generate outline" });
-      return;
+    if (!outlineResult.success || !outlineResult.outline) {
+      return res.status(500).json({ error: outlineResult.error || "Failed to generate outline" });
     }
 
-    const data = await response.json();
-    let outline = data.choices[0]?.message?.content?.trim();
+    let outline = outlineResult.outline;
 
     if (!outline) {
       res.status(500).json({ error: "No outline generated" });
@@ -1807,30 +1737,12 @@ Create the outline now:`;
       console.log('✅ Added "Kết luận" section to outline');
     }
 
-    // STEP 2: Calculate actual tokens used from OpenAI response
-    const actualTokens = calculateActualTokens(data);
-    const tokensToDeduct = actualTokens > 0 ? actualTokens : estimatedTokens;
-    console.log(
-      `✅ Generate Outline success - Deducting ${tokensToDeduct} tokens (actual from OpenAI)`,
-    );
-
-    // STEP 3: Deduct tokens from user account
-    const deductResult = await deductTokens(
-      userId,
-      tokensToDeduct,
-      "GENERATE_OUTLINE",
-    );
-
-    if (!deductResult.success) {
-      console.error("Failed to deduct tokens:", deductResult.error);
-    }
-
     res.status(200).json({
       success: true,
       outline: outline,
       config: config,
-      tokensUsed: tokensToDeduct,
-      remainingTokens: deductResult.remainingTokens,
+      tokensUsed: outlineResult.tokensUsed,
+      remainingTokens: tokenCheck.remainingTokens,
     });
   } catch (error) {
     console.error("Error generating outline:", error);
@@ -4639,13 +4551,14 @@ interface GenerateToplistOutlineRequest {
   language: string;
   tone: string;
   length?: string;
+  websiteId?: string;
 }
 
 const handleGenerateToplistOutline: RequestHandler = async (req, res) => {
   try {
     if (!(await verifyUser(req, res))) return;
 
-    const { topic, itemCount, language, tone, length } =
+    const { topic, itemCount, language, tone, length, websiteId } =
       req.body as GenerateToplistOutlineRequest;
 
     console.log("📥 Received toplist outline request:", {
@@ -4709,8 +4622,24 @@ const handleGenerateToplistOutline: RequestHandler = async (req, res) => {
       });
     }
 
+    // Optional: load website knowledge if websiteId is provided
+    let websiteKnowledge: string | undefined;
+    if (websiteId) {
+      const websiteRows = await query<any>(
+        `SELECT knowledge FROM websites WHERE id = ? AND user_id = ? LIMIT 1`,
+        [websiteId, userId],
+      );
+      if (websiteRows && websiteRows.length > 0 && websiteRows[0].knowledge) {
+        websiteKnowledge = websiteRows[0].knowledge as string;
+      }
+    }
+
     // ========== Use HARDCODED System Prompt ==========
     let systemPrompt = getSystemPrompt("generate_toplist_outline");
+    // Inject website knowledge at highest priority if present
+    if (websiteKnowledge && websiteKnowledge.trim().length > 0) {
+      systemPrompt = injectWebsiteKnowledge(systemPrompt, websiteKnowledge);
+    }
     console.log(
       "✅ Using hardcoded system prompt for generate_toplist_outline",
     );
