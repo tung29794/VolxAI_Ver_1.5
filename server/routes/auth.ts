@@ -631,10 +631,14 @@ router.post("/confirm-payment", async (req: Request, res: Response) => {
     const newPlanDetails =
       planDetails[newPlan as keyof typeof planDetails] || planDetails.free;
 
-    // Update subscription
+    // Calculate expiration date (30 days from now for monthly, 365 days for annual)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // Default 30 days
+
+    // Update subscription with new plan and expiration date
     await execute(
-      "UPDATE user_subscriptions SET plan_type = ?, tokens_limit = ?, articles_limit = ?, updated_at = NOW() WHERE user_id = ?",
-      [newPlan, newPlanDetails.tokens, newPlanDetails.articles, decoded.userId],
+      "UPDATE user_subscriptions SET plan_type = ?, tokens_limit = ?, articles_limit = ?, expires_at = ?, updated_at = NOW() WHERE user_id = ?",
+      [newPlan, newPlanDetails.tokens, newPlanDetails.articles, expiresAt, decoded.userId],
     );
 
     // CRITICAL: Update tokens_remaining and article_limit in users table to match new plan

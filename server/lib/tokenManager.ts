@@ -36,13 +36,37 @@ export async function getUserTokenBalance(userId: number): Promise<number> {
         COALESCE(
           (SELECT tokens_limit FROM user_subscriptions WHERE user_id = u.id AND is_active = 1 LIMIT 1),
           0
-        ) as tokens_limit
+        ) as tokens_limit,
+        (SELECT expires_at FROM user_subscriptions WHERE user_id = u.id AND is_active = 1 LIMIT 1) as expires_at
       FROM users u
       WHERE u.id = ?`,
       [userId]
     );
     
     if (!result) return 0;
+    
+    // Check if subscription has expired
+    if (result.expires_at) {
+      const expirationDate = new Date(result.expires_at);
+      const now = new Date();
+      
+      if (now > expirationDate) {
+        // Subscription expired - auto-downgrade to free plan
+        // Reset to free plan limits
+        await execute(
+          "UPDATE user_subscriptions SET plan_type = ?, tokens_limit = ?, articles_limit = ?, expires_at = NULL WHERE user_id = ? AND is_active = 1",
+          ["free", 10000, 2, userId]
+        );
+        
+        // Also update users table
+        await execute(
+          "UPDATE users SET tokens_remaining = ?, article_limit = ? WHERE id = ?",
+          [10000, 2, userId]
+        );
+        
+        return 10000; // Return free plan tokens
+      }
+    }
     
     // If tokens_remaining is NULL or 0, use tokens_limit from subscription
     // This handles the case where user just upgraded and tokens_remaining hasn't been initialized
