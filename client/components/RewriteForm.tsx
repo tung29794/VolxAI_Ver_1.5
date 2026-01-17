@@ -101,6 +101,17 @@ interface RewriteFormProps {
   onBack?: () => void;
 }
 
+const quillModules = {
+  toolbar: [
+    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+    ["bold", "italic", "underline", "strike"],
+    ["blockquote", "code-block"],
+    [{ list: "ordered" }, { list: "bullet" }],
+    ["link", "image"],
+    ["clean"],
+  ],
+};
+
 export default function RewriteForm({ onBack }: RewriteFormProps) {
   const [rewriteMode, setRewriteMode] = useState<RewriteMode>("paragraph");
   const [models, setModels] = useState<AIModel[]>([]);
@@ -108,6 +119,11 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loadingWebsites, setLoadingWebsites] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Quill refs
+  const paragraphQuillRef = useRef<ReactQuill>(null);
+  const keywordsQuillRef = useRef<ReactQuill>(null);
+  const newsQuillRef = useRef<ReactQuill>(null);
 
   // Common form data
   const [commonData, setCommonData] = useState({
