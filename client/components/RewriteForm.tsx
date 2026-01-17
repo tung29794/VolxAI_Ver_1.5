@@ -141,6 +141,7 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
 
   // Mode 2: Keywords Rewrite
   const [keywordsData, setKeywordsData] = useState({
+    content: "", // Article content to rewrite
     keywords: "", // Format: main keyword, sub keyword, sub keyword
     voiceAndTone: "Trung lập",
     writingMethod: "keep-headings",
