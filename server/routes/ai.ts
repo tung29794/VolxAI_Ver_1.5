@@ -7407,10 +7407,11 @@ const handleUnifiedRewrite: RequestHandler = async (req, res) => {
           error: "Content is required for paragraph mode",
         });
     }
-    if (mode === "keywords" && !keywords) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Keywords are required" });
+    if (mode === "keywords" && (!content || !keywords)) {
+      return res.status(400).json({
+        success: false,
+        error: "Article content and keywords are required for keywords mode",
+      });
     }
     if (mode === "url" && (!url || !keywords)) {
       return res
