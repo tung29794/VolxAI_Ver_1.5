@@ -6,11 +6,12 @@
 // Get API URL from environment or use default
 // In development: use current host (empty string = relative path)
 // In production: use VITE_API_URL from env or https://api.volxai.com
-export const API_BASE_URL = import.meta.env.VITE_API_URL !== undefined
-  ? import.meta.env.VITE_API_URL
-  : (typeof window !== 'undefined' && window.location.hostname === 'localhost'
-      ? ''
-      : 'https://api.volxai.com');
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL !== undefined
+    ? import.meta.env.VITE_API_URL
+    : typeof window !== "undefined" && window.location.hostname === "localhost"
+      ? ""
+      : "https://api.volxai.com";
 
 export const API_ENDPOINTS = {
   // Auth endpoints
@@ -165,7 +166,7 @@ export function isAuthenticated(): boolean {
  */
 export function buildApiUrl(path: string): string {
   // If API_BASE_URL is empty (development mode), use relative path directly
-  if (API_BASE_URL === '') {
+  if (API_BASE_URL === "") {
     return path;
   }
   // Otherwise, combine base URL with path
