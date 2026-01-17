@@ -735,29 +735,6 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
                 </Select>
               </div>
 
-              {/* File Upload */}
-              <div className="space-y-2">
-                <Label>Tải lên file (PDF, DOC, DOCX, TXT)</Label>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium mb-1">
-                    Kéo thả file hoặc nhấp để chọn
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Hỗ trợ PDF, DOC, DOCX, TXT
-                  </p>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFileUpload}
-                  accept=".pdf,.doc,.docx,.txt"
-                  className="hidden"
-                />
-              </div>
-
               {/* Content Textarea */}
               <div className="space-y-2">
                 <Label htmlFor="newsContent">Nội dung tin tức</Label>
