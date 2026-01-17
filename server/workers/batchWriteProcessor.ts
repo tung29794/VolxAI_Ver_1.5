@@ -143,10 +143,15 @@ async function processJob(job: BatchJob) {
 
       // Check user limits BEFORE attempting to write
       // If either tokens or articles_limit is exhausted, pause the job
-      const users = await query<any>("SELECT tokens_remaining, article_limit FROM users WHERE id = ?", [job.user_id]);
-      const user = users?.[0];
-      if (!user) {
-        await markJobFailed(job.id, "User not found");
+      // Get tokens from users table and articles_limit from user_subscriptions table
+      const userTokenData = await query<any>("SELECT tokens_remaining FROM users WHERE id = ?", [job.user_id]);
+      const subscriptionData = await query<any>("SELECT articles_limit FROM user_subscriptions WHERE user_id = ? AND is_active = TRUE", [job.user_id]);
+
+      const user = userTokenData?.[0];
+      const subscription = subscriptionData?.[0];
+
+      if (!user || !subscription) {
+        await markJobFailed(job.id, "User or subscription not found");
         return;
       }
 
@@ -155,7 +160,7 @@ async function processJob(job: BatchJob) {
         return;
       }
 
-      if (user.article_limit <= 0) {
+      if (subscription.articles_limit <= 0) {
         await pauseJob(job.id, i, `Article limit reached at article ${i + 1}/${keywords.length}. Please upgrade your plan.`);
         return;
       }
