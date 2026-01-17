@@ -221,8 +221,8 @@ export default function RewriteForm({ onBack }: RewriteFormProps) {
         autoInsertImages: commonData.autoInsertImages,
       };
 
-      // Add website knowledge if selected
-      if (commonData.websiteId) {
+      // Add website knowledge if selected (ignore "none" value)
+      if (commonData.websiteId && commonData.websiteId !== "none") {
         const website = websites.find(
           (w) => w.id === parseInt(commonData.websiteId),
         );
